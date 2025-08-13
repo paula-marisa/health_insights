@@ -1,0 +1,7 @@
+version: 2
+sources:
+- name: raw_stg
+  database: HEALTH_INSIGHTS
+  schema: RAW_STG
+  tables:
+  - name: sinasc_raw

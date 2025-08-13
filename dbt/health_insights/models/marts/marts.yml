@@ -1,0 +1,11 @@
+version: 2
+models:
+- name: fato_nascimentos
+  description: "Fato de nascimentos (SINASC) filtrado para o 1º semestre de 2023."
+  columns:
+  - name: sk_birth
+    tests: [ not_null, unique ]
+  - name: birth_weight_g
+    tests:
+    - dbt_utils.expression_is_true:
+        expression: ">= 0"

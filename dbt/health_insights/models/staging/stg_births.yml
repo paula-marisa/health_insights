@@ -1,0 +1,13 @@
+version: 2
+
+models:
+- name: stg_births
+  columns:
+  - name: sk_birth
+    tests: [ not_null, unique ]
+  - name: birth_date
+    tests: [ not_null ]
+  - name: sex_newborn
+    tests:
+    - accepted_values:
+        values: [ 'M', 'F', 'U' ]

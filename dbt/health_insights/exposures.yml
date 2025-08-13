@@ -1,0 +1,12 @@
+version: 2
+exposures:
+- name: painel_streamlit_nascimentos
+  type: dashboard
+  maturity: low
+  url: "http://localhost:8501"
+  description: "Painel Streamlit com KPIs: n.º nascidos vivos, % prematuros, peso médio, % cesarianas."
+  depends_on:
+  - ref('fato_nascimentos')
+  owner:
+    name: "Paula Rodrigues"
+    email: "paula@example.com"

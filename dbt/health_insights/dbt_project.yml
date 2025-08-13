@@ -1,0 +1,21 @@
+name: 'health_insights'
+version: '1.0'
+config-version: 2
+profile: 'health_insights'
+
+model-paths: [ 'models' ]
+
+vars:
+  analysis_start: '2022-01-01'
+  analysis_end: '2023-06-30'
+
+models:
+  health_insights:
+    +materialized: view
+    staging:
+      +schema: raw_stg
+    intermediate:
+      +schema: silver
+    marts:
+      +schema: marts
+      +materialized: table
