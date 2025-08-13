@@ -8,6 +8,7 @@ model-paths: [ 'models' ]
 vars:
   analysis_start: '2022-01-01'
   analysis_end: '2023-12-31'
+  has_maternal_fields: true
 
 models:
   health_insights:
