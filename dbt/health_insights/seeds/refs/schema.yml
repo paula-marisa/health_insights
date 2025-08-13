@@ -1,0 +1,6 @@
+version: 2
+seeds:
+- name: ref_municipios
+  columns:
+  - name: municipio_code
+    tests: [ not_null, unique ]

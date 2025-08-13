@@ -1,11 +1,42 @@
+# models/marts/marts.yml
 version: 2
+
 models:
+- name: dim_tempo
+  columns:
+  - name: sk_tempo
+    tests: [ not_null, unique ]
+  - name: data_dia
+    tests: [ not_null ]
+
+- name: dim_localidade
+  columns:
+  - name: sk_localidade
+    tests: [ not_null, unique ]
+  - name: municipio_code
+    tests: [ not_null ]
+
+- name: dim_recem_nascido
+  columns:
+  - name: sk_recem_nascido
+    tests: [ not_null, unique ]
+
 - name: fato_nascimentos
-  description: "Fato de nascimentos (SINASC) filtrado para o 1º semestre de 2023."
   columns:
   - name: sk_birth
     tests: [ not_null, unique ]
-  - name: birth_weight_g
+  - name: fk_sk_tempo
     tests:
-    - dbt_utils.expression_is_true:
-        expression: ">= 0"
+    - relationships:
+        to: ref('dim_tempo')
+        field: sk_tempo
+  - name: fk_sk_localidade
+    tests:
+    - relationships:
+        to: ref('dim_localidade')
+        field: sk_localidade
+  - name: fk_sk_recem_nascido
+    tests:
+    - relationships:
+        to: ref('dim_recem_nascido')
+        field: sk_recem_nascido

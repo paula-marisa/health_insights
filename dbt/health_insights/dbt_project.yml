@@ -19,3 +19,8 @@ models:
     marts:
       +schema: marts
       +materialized: table
+
+seeds:
+  +database: HEALTH_INSIGHTS
+  +schema: RAW_STG
+  +quote_columns: false
