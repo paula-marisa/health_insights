@@ -202,15 +202,59 @@ A imagem abaixo apresenta o grafo de dependência dos modelos no dbt, evidencian
 ![Lineage Graph](dbt\health_insights\images\lineage_graph.png)
 
 
-## 3) Escolha da Plataforma
+## 3) Escolha da Plataforma + Bónus
 
-O projeto utiliza o Snowflake como data warehouse por várias razões:
-1. **Escalabilidade elástica:** Snowflake permite dimensionar computação e armazenamento de forma independente, ajustando o warehouse (BOOTCAMP_WH) às cargas de trabalho.
-2. **Time Travel e Zero-Copy Cloning:** funcionalidades que simplificam a gestão de versões e a recuperação de dados, úteis em experimentos com pipelines de saúde.
-3. **Integração com dbt:** o conector dbt-snowflake permite compilar, testar e materializar modelos diretamente no Snowflake com mínimo overhead.
-4. **Simplicidade de ingestão:** O COPY INTO com FILE FORMAT facilita o carregamento de CSVs, e stages internos eliminam dependências externas.
+O projeto utiliza **Snowflake** como **data warehouse** principal para armazenamento e consumo dos dados modelados, complementado pelo **Databricks** para demonstração de **interoperabilidade entre plataformas** (bónus).
 
-Embora o Databricks também seja suportado, optou-se por manter a ingestão e a modelagem no Snowflake para reduzir complexidade. Como bónus, a pasta databricks/ contém exemplos de modelos que podem ser executados em um cluster Databricks com Delta Lake, caso se deseje explorar uma arquitetura híbrida.
+---
+
+### Motivos para a escolha do Snowflake
+1. **Escalabilidade elástica:** permite ajustar computação e armazenamento de forma independente, adaptando o warehouse (`BOOTCAMP_WH`) às necessidades de carga e consulta.
+2. **Recursos avançados de gestão de dados:** funcionalidades como *Time Travel* e *Zero-Copy Cloning* permitem versionamento, recuperação e experimentação de pipelines sem duplicar dados fisicamente.
+3. **Integração com dbt:** o conector `dbt-snowflake` garante testes, documentação e materializações diretamente no Snowflake com baixo overhead.
+4. **Ingestão simplificada:** o comando `COPY INTO` aliado a *stages* internos e *file formats* torna o carregamento de CSVs direto e eficiente.
+
+---
+
+### Arquitetura e Interoperabilidade (Bónus)
+Para além da execução completa do pipeline no Snowflake, foi configurada **integração com o Databricks** de duas formas:
+
+1. **Lakehouse Federation (Snowflake → Databricks)**  
+   - Configuração de uma **`CONNECTION`** no Databricks para o Snowflake.  
+   - Criação de um **`FOREIGN CATALOG sf_hi`** que espelha o banco de dados `HEALTH_INSIGHTS` no Databricks.  
+   - Permite consultar as tabelas finais (*marts*, dimensões e fatos) diretamente no Databricks, sem mover ficheiros, usando SQL nativo.
+   - Exemplo:
+     ```sql
+     SHOW SCHEMAS IN CATALOG sf_hi;
+     SELECT COUNT(*) FROM sf_hi.raw_stg_marts.fato_nascimentos;
+     ```
+
+2. **Exportação de Silver (Databricks → Snowflake)** *(opcional demonstrativo)*  
+   - Os dados processados no Databricks em formato Delta podem ser exportados para CSV (`COPY INTO DIRECTORY` em *Volumes*).  
+   - Estes ficheiros são carregados para o *stage* interno do Snowflake e ingeridos na camada RAW com `COPY INTO`.
+
+---
+
+### Vantagens da abordagem híbrida
+- **Flexibilidade:** uso do Databricks para exploração e pré-processamento em Delta Lake, e Snowflake para modelagem final e consumo analítico.
+- **Performance:** otimizações do Delta Lake (*OPTIMIZE*, *ZORDER*, *VACUUM*) combinadas com clustering automático e escalabilidade do Snowflake.
+- **Sem duplicação de dados:** leitura direta de tabelas entre plataformas via Lakehouse Federation.
+- **Demonstração prática:** mostra domínio de múltiplas ferramentas e padrões de integração no contexto de dados complexos de saúde.
+
+---
+
+### Diagrama do fluxo de interoperabilidade
+
+```plaintext
+DataSUS (.DBC → .CSV)
+        |
+        v
+  Snowflake (RAW → staging → marts via dbt)
+        |
+        +----> Databricks (Lakehouse Federation lê os marts diretamente)
+        |
+        +----> (Opcional) Databricks processa dados → exporta CSV → Snowflake RAW
+
 
 ## 4) Orquestração e Automação
 
