@@ -12,6 +12,9 @@ vars:
   analysis_end: '2023-12-31'
   has_maternal_fields: true
 
+flags:
+  use_materialization_v2: true
+
 models:
   health_insights:
     +materialized: view
@@ -35,7 +38,10 @@ models:
         +incremental_strategy: merge
         +on_schema_change: sync_all_columns
 
+    databricks:
+      +enabled: "{{ target.type in ['databricks','spark'] or target.name == 'prod' }}"
+
 seeds:
-  +database: HEALTH_INSIGHTS
-  +schema: RAW_STG
+  +database: "{{ 'HEALTH_INSIGHTS' if target.type == 'snowflake' else (target.catalog or 'main') }}"
+  +schema: "{{ 'RAW_STG'        if target.type == 'snowflake' else 'raw_stg' }}"
   +quote_columns: false

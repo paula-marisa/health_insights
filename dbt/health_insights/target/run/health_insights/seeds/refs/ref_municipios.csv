@@ -1,7 +1,9 @@
 
     
     
-    truncate table "HEALTH_INSIGHTS"."RAW_STG_RAW_STG"."REF_MUNICIPIOS";
+    
+    create table HEALTH_INSIGHTS.RAW_STG_RAW_STG.ref_municipios (municipio_code integer,municipio_nome text,uf_sigla text,regiao text)
+  ;
     -- dbt seed --
     
             insert into HEALTH_INSIGHTS.RAW_STG_RAW_STG.ref_municipios (municipio_code, municipio_nome, uf_sigla, regiao) values

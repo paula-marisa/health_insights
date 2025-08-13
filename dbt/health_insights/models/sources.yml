@@ -1,7 +1,8 @@
 version: 2
+
 sources:
 - name: raw_stg
-  database: HEALTH_INSIGHTS
-  schema: RAW_STG
+  database: "{{ target.database if target.type == 'snowflake' else none }}"
+  schema: "{{ target.schema if target.type == 'databricks' else 'RAW_STG' }}"
   tables:
   - name: sinasc_raw

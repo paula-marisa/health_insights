@@ -1,3 +1,6 @@
 {{ config(materialized='view') }}
-select *
-from sf_hi.raw_stg_marts.fato_nascimentos
+
+with f as (
+  select * from {{ ref('fato_nascimentos') }}
+)
+select * from f;

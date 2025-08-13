@@ -1,62 +1,86 @@
 {{ config(materialized='view') }}
 
+{# 1) descobrir as colunas disponíveis na fonte, de forma portátil #}
+{% set rel = source('raw_stg','sinasc_raw') %}
+{% set cols = adapter.get_columns_in_relation(rel) %}
+{% set colnames = cols | map(attribute='name') | map('lower') | list %}
+
 with src as (
-  select * from {{ source('raw_stg','sinasc_raw') }}
+  select * from {{ rel }}
 ),
--- gera um número de linha estável para cada registo (ordenação determinística)
+
 k as (
+  {# 2) construir dinamicamente a lista para ORDER BY apenas com colunas existentes #}
+  {% set order_parts = [] %}
+  {% for c, kind in [
+      ('DTNASC','str'),
+      ('HORANASC','str'),
+      ('CODESTAB','str'),
+      ('CODMUNNASC','str'),
+      ('SEXO','str'),
+      ('PESO','int'),
+      ('DTRECEBIM','str'),
+      ('DTCADASTRO','str'),
+      ('NUMEROLOTE','str'),
+      ('CONTADOR','str')
+    ] %}
+    {% if c|lower in colnames %}
+      {% if kind == 'int' %}
+        {% do order_parts.append(x_int(c)) %}
+      {% else %}
+        {% do order_parts.append(x_str(c)) %}
+      {% endif %}
+    {% endif %}
+  {% endfor %}
+
   select
     s.*,
     row_number() over (
-      order by
-        to_varchar(DTNASC), to_varchar(HORANASC), to_varchar(CODESTAB),
-        to_varchar(CODMUNNASC), to_varchar(SEXO), cast(PESO as number),
-        to_varchar(DTRECEBIM), to_varchar(DTCADASTRO), to_varchar(NUMEROLOTE),
-        to_varchar(CONTADOR)
+      order by {{ order_parts | join(', ') if order_parts | length > 0 else '1' }}
     ) as rn
   from src s
 ),
+
 norm as (
   select
-    -- chave única e estável baseada no rn + alguns campos
+    -- usa CONTADOR/CODMUNNASC se existirem; caso contrário usa NULL para estabilizar o hash
     md5(
-      coalesce(to_varchar(CONTADOR),'') || '-' ||
-      coalesce(to_varchar(CODMUNNASC),'') || '-' ||
-      lpad(to_varchar(rn), 10, '0')
-    )                                         as sk_birth,
+      coalesce({% if 'contador'   in colnames %} {{ x_str('CONTADOR') }} {% else %} cast(null as string) {% endif %}, '') || '-' ||
+      coalesce({% if 'codmunnasc' in colnames %} {{ x_str('CODMUNNASC') }} {% else %} cast(null as string) {% endif %}, '') || '-' ||
+      lpad({{ x_str('rn') }}, 10, '0')
+    ) as sk_birth,
 
-    -- data de nascimento (aceita DATE, 'YYYY-MM-DD' ou 'YYYYMMDD')
+    -- data de nascimento: várias formas
     case
-      when regexp_like(to_varchar(DTNASC), '^[0-9]{4}-[0-9]{2}-[0-9]{2}$') then
-        to_date(to_varchar(DTNASC))
-      when regexp_like(regexp_replace(to_varchar(DTNASC),'[^0-9]',''), '^[0-9]{8}$') then
+      when {{ x_regexp_like(x_str('DTNASC'), '^[0-9]{4}-[0-9]{2}-[0-9]{2}$') }} then
+        {{ x_try_to_date(x_str('DTNASC')) }}
+      when {{ x_regexp_like("regexp_replace(" ~ x_str('DTNASC') ~ ",'[^0-9]','')", '^[0-9]{8}$') }} then
         coalesce(
-          try_to_date(regexp_replace(to_varchar(DTNASC),'[^0-9]',''), 'DDMMYYYY'),
-          try_to_date(regexp_replace(to_varchar(DTNASC),'[^0-9]',''), 'YYYYMMDD')
+          {{ x_try_to_date("regexp_replace(" ~ x_str('DTNASC') ~ ",'[^0-9]','')", 'DDMMYYYY') }},
+          {{ x_try_to_date("regexp_replace(" ~ x_str('DTNASC') ~ ",'[^0-9]','')", 'YYYYMMDD') }}
         )
-      when regexp_like(regexp_replace(to_varchar(DTNASC),'[^0-9]',''), '^[0-9]{7}$') then
-        try_to_date(lpad(regexp_replace(to_varchar(DTNASC),'[^0-9]',''), 8, '0'), 'DDMMYYYY')
-      else
-        null
-    end                                        as birth_date,
+      when {{ x_regexp_like("regexp_replace(" ~ x_str('DTNASC') ~ ",'[^0-9]','')", '^[0-9]{7}$') }} then
+        {{ x_try_to_date("lpad(regexp_replace(" ~ x_str('DTNASC') ~ ",'[^0-9]',''), 8, '0')", 'DDMMYYYY') }}
+      else null
+    end as birth_date,
 
-    -- 1=M, 2=F, outros=U
-    case to_varchar(SEXO)
+    case {{ x_str('SEXO') }}
       when '1' then 'M'
       when '2' then 'F'
       else 'U'
-    end                                        as sex_newborn,
+    end as sex_newborn,
 
-    cast(PESO as number)                       as birth_weight_g,
-    to_varchar(GESTACAO)                       as gestation_code,
-    cast(SEMAGESTAC as number)                 as gestational_weeks,
-    to_varchar(PARTO)                          as delivery_type,
-    to_varchar(CODMUNNASC)                     as municipality_code
+    {% if 'peso' in colnames %}         {{ x_int('PESO') }}       {% else %} cast(null as int)    {% endif %} as birth_weight_g,
+    {% if 'gestacao' in colnames %}     {{ x_str('GESTACAO') }}   {% else %} cast(null as string) {% endif %} as gestation_code,
+    {% if 'semagestac' in colnames %}   {{ x_int('SEMAGESTAC') }} {% else %} cast(null as int)    {% endif %} as gestational_weeks,
+    {% if 'parto' in colnames %}        {{ x_str('PARTO') }}      {% else %} cast(null as string) {% endif %} as delivery_type,
+    {% if 'codmunnasc' in colnames %}   {{ x_str('CODMUNNASC') }} {% else %} cast(null as string) {% endif %} as municipality_code
   from k
 )
+
 select
   sk_birth, birth_date, sex_newborn, birth_weight_g,
   gestation_code, gestational_weeks, delivery_type, municipality_code,
-  to_char(birth_date, 'YYYY-MM') as ym
+  {{ x_date_ym('birth_date') }} as ym
 from norm
 where birth_date is not null

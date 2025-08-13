@@ -13,18 +13,18 @@
 with all_values as (
 
     select
-        sexo as value_field,
+        categoria_peso as value_field,
         count(*) as n_records
 
     from HEALTH_INSIGHTS.RAW_STG_marts.dim_recem_nascido
-    group by sexo
+    group by categoria_peso
 
 )
 
 select *
 from all_values
 where value_field not in (
-    'M','F','U'
+    'baixo_peso','adequado','macrossomico','desconhecido'
 )
 
 

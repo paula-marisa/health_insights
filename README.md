@@ -75,37 +75,132 @@ Com isso, o processo de ingestão foi comprovadamente executado na plataforma-al
 
 ## 2) Transformação e Modelagem de Dados com dbt
 
+### Objetivo
+Transformar os dados brutos do DataSUS em um modelo dimensional no formato **Star Schema**, pronto para análise em saúde pública.  
+O processo foi feito integralmente com o **dbt**, organizando as transformações em camadas, criando tabelas fato e dimensões, implementando testes de qualidade e gerando documentação.
+
+---
+
 ### Modelagem Dimensional
+O modelo foi desenhado em **Star Schema**, com uma tabela fato central (`fato_nascimentos`) conectada a várias dimensões que permitem análises geográficas, temporais, demográficas e clínicas.
 
-Para tornar os dados operacionais e analíticos, foi concebido um modelo dimensional no formato Star Schema. A tabela fato centraliza métricas sobre cada nascimento e se conecta a várias dimensões que enriquecem a análise. A figura abaixo ilustra o desenho lógico do modelo:
+**Tabelas criadas:**
 
-
-### Tabelas de Fatos e Dimensões:
 | Tabela                  | Tipo      | Descrição resumida |
 |-------------------------|-----------|--------------------|
-| fato_nascimentos        | Fato      | Registra cada nascimento com chaves para as dimensões e medidas como peso do bebê, idade gestacional, tipo de parto, flag de prematuridade etc. |
-| dim_tempo               | Dimensão  | Calendário com dia, mês, trimestre, ano, dia da semana; permite análises temporais. |
-| dim_localidade          | Dimensão  | Códigos de município, UF e região; permite análises geográficas. |
-| dim_faixa_etaria_sexo   | Dimensão  | Faixa etária da mãe e sexo do recém-nascido, agregando atributos demográficos. |
-| dim_mae                 | Dimensão  | Atributos da mãe: escolaridade, estado civil, raça/cor, número de filhos, etc. |
+| `fato_nascimentos`      | Fato      | Registra cada nascimento com chaves para as dimensões e medidas como peso do bebê, idade gestacional, tipo de parto, flag de prematuridade, número de consultas pré-natal e indicadores de vitalidade do recém-nascido. |
+| `dim_tempo`             | Dimensão  | Calendário com dia, mês, trimestre, ano, dia da semana; permite análises temporais. |
+| `dim_localidade`        | Dimensão  | Códigos de município, UF e região; permite análises geográficas. |
+| `dim_faixa_etaria_sexo` | Dimensão  | Faixa etária da mãe e sexo do recém-nascido, permitindo cruzar fatores demográficos. |
+| `dim_mae`               | Dimensão  | Atributos da mãe: escolaridade, estado civil, raça/cor, número de filhos, entre outros. |
+| `dim_recem_nascido`     | Dimensão  | Características do recém-nascido, como sexo, peso ao nascer, Apgar no 1º e 5º minuto, e presença de anomalias congênitas. |
 
-Cada dimensão possui uma chave substituta (surrogate key) gerada no momento da carga. A tabela fato contém estas chaves e medidas numéricas; por exemplo: peso ao nascer (PESO), idade gestacional (IDADE_GEST), quantidade de consultas pré-natal (CONSULTAS_PRENATAL) e indicadores binários como PARTO_CESARIANO ou PREMATURO.
+**Chaves:**
+- Cada dimensão possui **surrogate key** (chave substituta) gerada na carga.
+- A fato referencia essas chaves e inclui métricas numéricas e indicadores binários, como:
+  - `peso_ao_nascer`
+  - `idade_gestacional`
+  - `quantidade_consultas_pre_natal`
+  - `flag_parto_cesario`
+  - `flag_prematuro`
+  - `apgar1`
+  - `apgar5`
 
-### Camadas do dbt
-O projeto dbt está organizado em três camadas:
+---
 
-1. **Staging (staging/):** transforma e normaliza os dados brutos. Os modelos stg_births.sql tratam diferenças de schema entre anos, padronizam formatos de data e convertem códigos em tipos apropriados (ex.: try_to_date). Materialização: view (para rapidez e facilidade de inspeção).
-2. **Intermediate (intermediate/):** enriquece e faz join entre as tabelas de staging para produzir entidades quase finais, como int_births_enriched.sql. Materialização: view ou table conforme a necessidade.
-3. **Marts (marts/):** contém as tabelas fato e dimensões finais. O modelo fato_nascimentos.sql gera a tabela de fato incrementalmente, enquanto as dimensões (dim_*.sql) criam tabelas dimensionais. Materialização: incremental para a fato (devido ao volume) e table para dimensões (pequenas e gerenciáveis).
+### Estrutura em Camadas no dbt
 
-### Testes e Documentação
-Para garantir a qualidade dos dados, foram definidos testes em YAML e SQL:
-- **Uniqueness:** valida que a chave de cada dimensão (dim_*.id) é única e não nula.
-- **Not Null:** garante que campos críticos como data de nascimento, município ou sexo não estejam vazios.
-- **Accepted Values:** valida códigos (ex.: sexo do bebê = {1,2}, tipo de parto = {1,2,3}) conforme especificação do DataSUS.
-- **Referential Integrity:** assegura que chaves da fato existam nas dimensões correspondentes.
+1. **Staging (`models/staging/`)**
+   - Normaliza e padroniza os dados brutos.
+   - Ex.: `stg_births.sql` trata diferenças de schema entre anos, padroniza datas (`try_to_date`) e converte códigos para tipos adequados.
+   - **Materialização:** `view` (mais rápido e fácil de inspecionar).
+   
+   **Comando:**
+   ```bash
+   dbt run -s staging
+   ```
 
-Além dos testes, foi gerada a documentação dos modelos via dbt docs generate, permitindo consultar descrições, dependências e resultados diretamente no browser. Esta prática facilita a manutenção e o entendimento do modelo por qualquer membro da equipa.
+2. **Intermediate (`models/intermediate/`)**
+   - Enriquece e junta tabelas de staging.
+   - Ex.: int_births_enriched.sql une dados de nascimentos com códigos de localidade, atributos da mãe e informações do recém-nascido.
+   - **Materialização:** `view` ou `table` dependendo do caso.
+
+   **Comando:**
+   ```bash
+   dbt run -s intermediate
+   ```
+
+3. **Marts (`models/marts/`)**
+   - Contém tabelas **fato** e **dimensões** finais.
+   - `fato_nascimentos.sql` é **incremental** para otimizar a carga de grandes volumes.
+   - Dimensões (`dim_*.sql`) são materializadas como `table` (pequenas e estáveis).
+
+   **Comando:**
+   ```bash
+   dbt run -s marts
+   ```
+
+### Testes de Qualidade no dbt
+Foram definidos testes no `schema.yml` e SQL para garantir a integridade dos dados.
+
+Tipos de testes aplicados:
+- **Uniqueness:** garante que IDs de dimensões são únicos.
+- **Not Null:** campos críticos (datas, município, sexo).
+- **Accepted Values:** validação de códigos do DataSUS (ex.: sexo ∈ {1, 2}).
+- **Referential Integrity:** chaves estrangeiras da fato devem existir nas dimensões.
+
+**Comando para executar todos os testes:**
+   ```bash
+   dbt test
+   ```
+
+**Comando para executar testes de um modelo específico:**
+   ```bash
+   dbt test -m fato_nascimentos
+   ```
+
+### Documentação
+Foi gerada documentação dos modelos usando:
+
+**Comando:**
+   ```bash
+   dbt docs generate
+   dbt docs serve
+   ```
+
+Isso permite consultar:
+- Descrições das tabelas e colunas
+- Relações entre modelos
+- Histórico de execuções
+
+A documentação pode ser aberta no navegador, facilitando manutenção e entendimento por toda a equipa.
+
+### Execução Completa
+Para rodar toda a pipeline de transformação e modelagem de dados:
+
+# Executa todos os modelos
+   ```bash
+   dbt run
+   ```
+
+
+# Executa todos os testes
+   ```bash
+   dbt test
+   ```
+
+# Gera e abre documentação
+   ```bash
+   dbt docs generate
+   dbt docs serve
+   ```
+
+### Linha de Dependência (Lineage Graph)
+
+A imagem abaixo apresenta o grafo de dependência dos modelos no dbt, evidenciando a sequência de transformações e relações entre tabelas.
+
+![Lineage Graph](dbt\health_insights\images\lineage_graph.png)
+
 
 ## 3) Escolha da Plataforma
 

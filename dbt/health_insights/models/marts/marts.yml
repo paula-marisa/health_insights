@@ -19,10 +19,18 @@ models:
   columns:
   - name: sk_recem_nascido
     tests: [ not_null, unique ]
-  - name: sexo
+  - name: sexo_bebe
     tests:
     - accepted_values:
         values: [ 'M', 'F', 'U' ]
+  - name: categoria_peso
+    tests:
+    - accepted_values:
+        values: [ 'baixo_peso', 'adequado', 'macrossomico', 'desconhecido' ]
+  - name: categoria_gestacao
+    tests:
+    - accepted_values:
+        values: [ 'pre_termo', 'termo', 'pos_termo', 'desconhecido' ]
 
 - name: fato_nascimentos
   columns:
@@ -44,6 +52,29 @@ models:
         to: ref('dim_recem_nascido')
         field: sk_recem_nascido
   - name: sex_newborn
+    tests:
+    - accepted_values:
+        values: [ 'M', 'F', 'U' ]
+
+- name: dim_mae
+  columns:
+  - name: sk_mae
+    tests: [ not_null, unique ]
+  # idade_mae pode ser NULL por agora; quando tiveres o campo real, adiciona not_null
+  - name: faixa_etaria_mae
+    tests:
+    - accepted_values:
+        values: [ 'desconhecido' ]
+
+- name: dim_faixa_etaria_sexo
+  columns:
+  - name: sk_faixa_etaria_sexo
+    tests: [ not_null, unique ]
+  - name: faixa_etaria_mae
+    tests:
+    - accepted_values:
+        values: [ 'desconhecido' ]
+  - name: sexo_bebe
     tests:
     - accepted_values:
         values: [ 'M', 'F', 'U' ]

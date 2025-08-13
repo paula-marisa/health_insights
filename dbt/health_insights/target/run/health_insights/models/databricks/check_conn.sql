@@ -1,16 +1,27 @@
 
+    
+  create or replace table `health_insights`.`raw_stg`.`check_conn`
   
+  (
     
+      user_name string,
+    
+      catalog_name string,
+    
+      schema_name string,
+    
+      ts timestamp
+    
+    
+  )
 
-create or replace transient table HEALTH_INSIGHTS.RAW_STG.check_conn
-    
-    
-    
-    as (
-select current_user() as user_name, current_catalog() as catalog_name,
-       current_schema() as schema_name, current_timestamp() as ts
-    )
-;
-
+  using delta
+  
+  
+  
+  
+  
+  
+  
 
   

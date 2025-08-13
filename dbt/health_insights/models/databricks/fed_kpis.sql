@@ -1,7 +1,11 @@
 {{ config(materialized='view') }}
+
+with f as (select * from {{ ref('fato_nascimentos') }})
 select
-  count(*)                        as n_nascidos,
-  round(avg(birth_weight_g), 0)   as peso_medio_g,
-  round(avg(is_premature)*100, 2) as pct_prematuros,
-  round(avg(is_cesarean)*100, 2)  as pct_cesareas
-from sf_hi.raw_stg_marts.fato_nascimentos
+  date_trunc('month', f.birth_date) as mes,
+  count(*)                          as nacimentos,
+  avg(case when f.is_cesarean then 1 else 0 end) as perc_cesarea,
+  avg(case when f.is_premature then 1 else 0 end) as perc_prematuros
+from f
+group by 1
+order by 1;
