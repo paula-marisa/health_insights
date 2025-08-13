@@ -1,4 +1,3 @@
--- models/marts/dim_localidade.sql  (com seed RAW_STG)
 {{ config(materialized='table') }}
 
 with muni as (
@@ -9,18 +8,16 @@ with muni as (
 ref as (
   select
     MUNICIPIO_CODE::string as municipio_code,
-    MUNICIPIO_NOME         as municipio_nome,
-    UF_SIGLA               as uf_sigla,
-    REGIAO                 as regiao
+    MUNICIPIO_NOME::string as municipio_nome,
+    UF_SIGLA::string       as uf_sigla,
+    REGIAO::string         as regiao
   from {{ ref('ref_municipios') }}
 )
 select
   md5(m.municipio_code)        as sk_localidade,
   m.municipio_code,
-  r.municipio_nome,
-  r.uf_sigla,
-  substr(m.municipio_code,1,2) as uf_code,
-  r.regiao
+  coalesce(r.municipio_nome, 'desconhecido') as municipio_nome,
+  coalesce(r.uf_sigla, substr(m.municipio_code,1,2)) as uf_sigla,
+  coalesce(r.regiao, 'desconhecida') as regiao
 from muni m
 left join ref r on r.municipio_code = m.municipio_code
-

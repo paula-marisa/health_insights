@@ -19,23 +19,33 @@ health_insights/
 │  └─ hi_dashboard_3in1.py            # dashboard Streamlit
 └─ dbt/health_insights/
    ├─ dbt_project.yml
+   ├─ macro/
+   │   └─ pick_col.sql
    ├─ seeds/
-   | ├── ref_municipios.csv
-   | └─ schema.yml
-   └─ models/
-      ├─ databricks/
-      │  ├─ check_conn.sql
-      │  ├─ fed_fato.sql
-      │  └─ fed_kpis.sql
-      ├─ staging/
-      │  ├─ stg_births.sql
-      │  └─ stg_births.yml
-      ├─ intermediate/
-      │  └─ int_births_enriched.sql
-      └─ marts/
-         ├─ fato_nascimentos.sql
-         └─ marts.yml
-      └─ sources.yml
+   │   ├─ refs/
+   │   │  └─ ref_municipios.csv
+   │   └─ schema.yml
+   ├─ models/
+   │   ├─ databricks/
+   │   │  ├─ check_conn.sql
+   │   │  ├─ fed_fato.sql
+   │   │  └─ fed_kpis.sql
+   │   ├─ staging/
+   │   │  ├─ stg_births.sql
+   │   │  └─ stg_births.yml
+   │   ├─ intermediate/
+   │   │  └─ int_births_enriched.sql
+   │   ├─ marts/
+   │   │   ├─ dim_faixa_etaria_sexo.sql
+   │   │   ├─ dim_localidade.sql
+   │   │   ├─ dim_mae.sql
+   │   │   ├─ dim_recem_nascido.sql
+   │   │   ├─ dim_tempo.sql
+   │   │   ├─ fato_nascimentos.sql
+   │   │   └─ marts.yml
+   │   └─ sources.yml
+   ├─ dbt_project.yml
+   └─ packages.yml
 ```
 > **Nota:** Os diretórios datasets/originais e datasets/csv simulam, respectivamente, a camada de ingestão (landing) e a camada bronze de um data lake. Em ambientes de produção estes ficheiros estariam num armazenamento de objetos (por exemplo S3, Azure Blob ou GCS) e seriam versionados ou particionados de acordo com o período de coleta.
 
@@ -43,21 +53,25 @@ health_insights/
 
 ### Fonte de dados
 
-Os dados foram obtidos no portal oficial do DataSUS, no endereço de Transferência de Arquivos (ftp.datasus.gov.br) do SINASC. O acesso foi efetuado em 13/08/2025 (Europe/Lisbon) e utilizamos os ficheiros correspondentes ao estado do Rio de Janeiro (RJ) para os anos de 2022 e 2023. A escolha deste conjunto permite análises consistentes sobre nascimentos em um período recente.
+Os dados utilizados são de acesso público, obtidos no portal oficial do DataSUS na área de Transferência de Arquivos (ftp.datasus.gov.br), especificamente do conjunto SINASC – Sistema de Informações sobre Nascidos Vivos.
+O download foi realizado em 13/08/2025 (Europe/Lisbon), contemplando os ficheiros referentes ao estado do Rio de Janeiro (RJ) para os anos de 2022 e 2023.
+A escolha do SINASC deve-se à sua relevância para a saúde pública, permitindo análises consistentes sobre nascimentos e perfil materno-infantil em um período recente.
 
 ### Simulação de Data Lake / Camada Bronze
-Os ficheiros .DBC originais foram descarregados para datasets/originais/ e posteriormente convertidos para .CSV através do script Python scripts/converter_dbc_para_csv.py. O diretório datasets/csv/ contém estes CSVs e representa a camada bronze da pipeline. Em uma arquitetura real, essa etapa equivaleria ao armazenamento inicial em um data lake (por exemplo, arquivos Parquet em S3) antes de qualquer transformação.
+Os ficheiros originais no formato .DBC foram descarregados para o diretório datasets/originais/ e convertidos para .CSV utilizando o script Python scripts/converter_dbc_para_csv.py.
+Os arquivos convertidos foram armazenados em datasets/csv/, representando a camada bronze da arquitetura.
+Em um cenário real, esta camada corresponderia ao armazenamento inicial em um data lake (por exemplo, arquivos Parquet no Amazon S3, Azure Data Lake ou Google Cloud Storage), preservando os dados brutos antes de qualquer transformação.
 
 ### Ingestão no Snowflake
-Após a conversão para CSV, os dados são carregados para o Snowflake. Os passos principais são:
+Após a conversão, os CSVs foram ingeridos no Snowflake seguindo estes passos:
 
-1. Criação de **database, schemas e warehouse** no Snowflake.
-2. Definição de um file format CSV com **HEADER=TRUE**.
-3. Criação de um **stage** (RAW_STAGE) para upload dos arquivos CSV via Snowsight.
-4. Inferência do schema e criação da tabela **RAW_STG.SINASC_RAW** com base nos CSVs.
-5. Execução do **COPY INTO** para carregar os arquivos convertidos (ex.: **dnrj2022.csv**, **dnrj2023.csv**).
+1. Criação da database, schemas e warehouse dedicados ao projeto.
+2. Definição de um file format do tipo CSV com HEADER=TRUE.
+3. Criação de um stage (RAW_STAGE) para upload dos CSVs via Snowsight.
+4. Inferência automática de schema e criação da tabela RAW_STG.SINASC_RAW com base nos CSVs.
+5. Execução do comando COPY INTO para carregar os ficheiros convertidos (ex.: dnrj2022.csv, dnrj2023.csv) para a tabela.
 
-Estes passos estão documentados na secção técnica original e foram mantidos para consulta.
+Com isso, o processo de ingestão foi comprovadamente executado na plataforma-alvo, simulando um fluxo real de recolha e armazenamento inicial de dados em ambiente de nuvem.
 
 ## 2) Transformação e Modelagem de Dados com dbt
 

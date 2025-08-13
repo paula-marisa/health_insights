@@ -1,4 +1,4 @@
-{{ config(materialized='table', enabled=var('has_maternal_fields', false)) }}
+
 
 with src as (
   select distinct
@@ -8,7 +8,7 @@ with src as (
     racacor::string      as raca_cor_mae,
     qtnfilhosvivos::int  as filhos_vivos,
     qtnfilhosmortos::int as filhos_mortos
-  from {{ ref('int_births_enriched') }}
+  from HEALTH_INSIGHTS.RAW_STG_silver.int_births_enriched
 )
 select
   md5(

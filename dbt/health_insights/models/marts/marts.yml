@@ -1,4 +1,3 @@
-# models/marts/marts.yml
 version: 2
 
 models:
@@ -20,6 +19,10 @@ models:
   columns:
   - name: sk_recem_nascido
     tests: [ not_null, unique ]
+  - name: sexo
+    tests:
+    - accepted_values:
+        values: [ 'M', 'F', 'U' ]
 
 - name: fato_nascimentos
   columns:
@@ -40,3 +43,7 @@ models:
     - relationships:
         to: ref('dim_recem_nascido')
         field: sk_recem_nascido
+  - name: sex_newborn
+    tests:
+    - accepted_values:
+        values: [ 'M', 'F', 'U' ]

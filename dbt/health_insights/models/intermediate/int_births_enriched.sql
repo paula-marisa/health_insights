@@ -2,14 +2,39 @@
 
 with s as (
   select * from {{ ref('stg_births') }}
+),
+enriched as (
+  select
+    -- campos normalizados vindos do staging
+    s.birth_date::date                                     as birth_date,
+    to_char(s.birth_date, 'YYYY-MM')                       as ym,
+    s.sex_newborn::string                                  as sex_newborn,
+    s.birth_weight_g::int                                  as birth_weight_g,
+    s.gestation_code::string                               as gestation_code,
+    s.gestational_weeks::int                               as gestational_weeks,
+    s.delivery_type::string                                as delivery_type,
+    s.municipality_code::string                            as municipality_code,
+
+    -- flags derivadas (agora definidas aqui)
+    case when s.birth_weight_g is not null and s.birth_weight_g < 2500 then true else false end as is_low_weight,
+    case when s.gestational_weeks is not null and s.gestational_weeks < 37 then true else false end as is_premature,
+    case 
+      when upper(coalesce(s.delivery_type,'')) like '%CES%' then true
+      when s.delivery_type in ('2','CESAREA','CESÁREA') then true
+      else false
+    end as is_cesarean,
+
+    -- campos maternos normalizados (se existirem no staging; senão ficam null)
+    try_cast({{ pick_col('stg_births', ['IDADEMAE','IDADEMAE']) }} as int)                    as idademae,
+    {{ pick_col('stg_births', ['ESCMAE','ESCMAE2010','ESCOLARIDADE_MAE']) }}::string          as escmae,
+    {{ pick_col('stg_births', ['ESTCIVMAE','ESTADO_CIVIL_MAE']) }}::string                    as estcivmae,
+    {{ pick_col('stg_births', ['RACACOR','RACA_COR_MAE','RACACORMAE']) }}::string             as racacor,
+    try_cast({{ pick_col('stg_births', ['QTDFILVIVO','QTD_FILHOS_VIVOS']) }} as int)          as qtnfilhosvivos,
+    try_cast({{ pick_col('stg_births', ['QTDFILMORT','QTD_FILHOS_MORTOS']) }} as int)         as qtnfilhosmortos,
+
+    -- chave do nascimento (mantemos do staging)
+    s.sk_birth
+  from s
+  where s.birth_date is not null
 )
-select
-  s.*,
-  case when try_to_number(birth_weight_g) >= 2500 then 0 else 1 end as is_low_weight,
-  case
-    when gestational_weeks is not null then iff(gestational_weeks < 37, 1, 0)
-    when gestation_code in ('1','2','3','4') then 1
-    else 0
-  end as is_premature,
-  case when delivery_type = '2' then 1 else 0 end as is_cesarean
-from s
+select * from enriched

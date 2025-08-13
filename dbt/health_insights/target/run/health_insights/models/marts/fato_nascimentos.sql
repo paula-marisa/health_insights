@@ -1,10 +1,17 @@
--- models/marts/fato_nascimentos.sql
-{{ config(materialized='table') }}
+
+  
+    
+
+create or replace transient table HEALTH_INSIGHTS.RAW_STG_marts.fato_nascimentos
+    
+    
+    
+    as (
 
 with f as (
   select
     sk_birth,
-    birth_date::date        as birth_date,
+    birth_date::date       as birth_date,
     ym,
     sex_newborn,
     birth_weight_g,
@@ -12,34 +19,31 @@ with f as (
     is_premature,
     is_cesarean,
     municipality_code
-  from {{ ref('int_births_enriched') }}
-  where birth_date between to_date('{{ var("analysis_start") }}')
-                      and to_date('{{ var("analysis_end") }}')
+  from HEALTH_INSIGHTS.RAW_STG_silver.int_births_enriched
+  where birth_date between to_date('2022-01-01')
+                      and to_date('2023-12-31')
+
+  
 ),
 
 lk_tempo as (
-  select sk_tempo, data_dia from {{ ref('dim_tempo') }}
+  select sk_tempo, data_dia from HEALTH_INSIGHTS.RAW_STG_marts.dim_tempo
 ),
-
 lk_loc as (
-  select sk_localidade, municipio_code from {{ ref('dim_localidade') }}
+  select sk_localidade, municipio_code from HEALTH_INSIGHTS.RAW_STG_marts.dim_localidade
 ),
-
 lk_baby as (
-  select
-    sk_recem_nascido, sexo, faixa_peso, is_baixo_peso, is_prematuro, is_cesarea
-  from {{ ref('dim_recem_nascido') }}
+  select sk_recem_nascido, sexo, faixa_peso, is_baixo_peso, is_prematuro, is_cesarea
+  from HEALTH_INSIGHTS.RAW_STG_marts.dim_recem_nascido
 )
 
 select
   f.sk_birth,
-
-  -- FKs
   t.sk_tempo          as fk_sk_tempo,
   l.sk_localidade     as fk_sk_localidade,
   b.sk_recem_nascido  as fk_sk_recem_nascido,
 
-  -- (opcional) manter atributos degenerados no fato
+  -- atributos degenerados
   f.birth_date,
   f.ym,
   f.sex_newborn,
@@ -48,13 +52,10 @@ select
   f.is_premature,
   f.is_cesarean,
   f.municipality_code
-
 from f
-left join lk_tempo t
-  on t.data_dia = f.birth_date
-left join lk_loc l
-  on l.municipio_code = f.municipality_code::string
-left join lk_baby b
+left join lk_tempo t on t.data_dia = f.birth_date
+left join lk_loc   l on l.municipio_code = f.municipality_code::string
+left join lk_baby  b 
   on b.sexo = f.sex_newborn
  and b.faixa_peso = case
         when f.birth_weight_g is null then 'desconhecido'
@@ -65,3 +66,8 @@ left join lk_baby b
  and b.is_baixo_peso = f.is_low_weight
  and b.is_prematuro  = f.is_premature
  and b.is_cesarea    = f.is_cesarean
+    )
+;
+
+
+  
