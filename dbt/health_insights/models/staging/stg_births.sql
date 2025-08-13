@@ -27,30 +27,17 @@ norm as (
 
     -- data de nascimento (aceita DATE, 'YYYY-MM-DD' ou 'YYYYMMDD')
     case
-      when try_to_date(to_varchar(DTNASC)) is not null then try_to_date(to_varchar(DTNASC))
+      when regexp_like(to_varchar(DTNASC), '^[0-9]{4}-[0-9]{2}-[0-9]{2}$') then
+        to_date(to_varchar(DTNASC))
+      when regexp_like(regexp_replace(to_varchar(DTNASC),'[^0-9]',''), '^[0-9]{8}$') then
+        coalesce(
+          try_to_date(regexp_replace(to_varchar(DTNASC),'[^0-9]',''), 'DDMMYYYY'),
+          try_to_date(regexp_replace(to_varchar(DTNASC),'[^0-9]',''), 'YYYYMMDD')
+        )
+      when regexp_like(regexp_replace(to_varchar(DTNASC),'[^0-9]',''), '^[0-9]{7}$') then
+        try_to_date(lpad(regexp_replace(to_varchar(DTNASC),'[^0-9]',''), 8, '0'), 'DDMMYYYY')
       else
-        case
-          when regexp_like(regexp_replace(to_varchar(DTNASC),'[^0-9]',''), '^[0-9]{8}$') then
-            -- calcular candidatos
-            coalesce(
-              iff(
-                try_to_date(regexp_replace(to_varchar(DTNASC),'[^0-9]',''), 'YYYYMMDD') is not null
-                and year(try_to_date(regexp_replace(to_varchar(DTNASC),'[^0-9]',''), 'YYYYMMDD')) between 1990 and 2035,
-                try_to_date(regexp_replace(to_varchar(DTNASC),'[^0-9]',''), 'YYYYMMDD'),
-                null
-              ),
-              iff(
-                try_to_date(regexp_replace(to_varchar(DTNASC),'[^0-9]',''), 'DDMMYYYY') is not null
-                and year(try_to_date(regexp_replace(to_varchar(DTNASC),'[^0-9]',''), 'DDMMYYYY')) between 1990 and 2035,
-                try_to_date(regexp_replace(to_varchar(DTNASC),'[^0-9]',''), 'DDMMYYYY'),
-                null
-              )
-            )
-          when regexp_like(regexp_replace(to_varchar(DTNASC),'[^0-9]',''), '^[0-9]{7}$') then
-            try_to_date(lpad(regexp_replace(to_varchar(DTNASC),'[^0-9]',''), 8, '0'), 'DDMMYYYY')
-          else
-            try_to_date(to_varchar(DTNASC))
-        end
+        null
     end                                        as birth_date,
 
     -- 1=M, 2=F, outros=U
