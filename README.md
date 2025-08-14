@@ -2,7 +2,7 @@
 
 **Objetivo** 
 
-Este repositório demonstra o desenho e a implementação de uma pipeline de dados completa para o conjunto de dados SINASC (Sistema de Informações sobre Nascidos Vivos), disponibilizado pelo portal oficial do DataSUS. O objetivo é ingerir, transformar, modelar e expor dados brutos de saúde pública, simulando uma solução de engenharia de dados de ponta a ponta. Todas as etapas foram pensadas para refletir boas práticas de engenharia, desde a coleta até a visualização, passando por automação e versionamento.
+Este repositório demonstra o desenho e a implementação de uma pipeline de dados completa para o conjunto de dados SINASC (Sistema de Informações sobre Nascidos Vivos), disponibilizado pelo portal oficial do DataSUS. O objetivo é ingerir, transformar, modelar e expor dados brutos de saúde pública, através da simulação de uma solução de engenharia de dados de ponta a ponta. Todas as etapas foram pensadas para refletir boas práticas de engenharia, desde a recolha até à visualização.
 
 ## 0) Estrutura de pastas do projeto
 
@@ -17,6 +17,7 @@ health_insights/
 │  └─ converter_dbc_para_csv.py     # script de conversão Python
 ├─ app/
 │  └─ hi_dashboard_3in1.py            # dashboard Streamlit
+├─ images/
 └─ dbt/health_insights/
    ├─ dbt_project.yml
    ├─ macro/
@@ -47,7 +48,7 @@ health_insights/
    ├─ dbt_project.yml
    └─ packages.yml
 ```
-> **Nota:** Os diretórios datasets/originais e datasets/csv simulam, respectivamente, a camada de ingestão (landing) e a camada bronze de um data lake. Em ambientes de produção estes ficheiros estariam num armazenamento de objetos (por exemplo S3, Azure Blob ou GCS) e seriam versionados ou particionados de acordo com o período de coleta.
+> **Nota:** Os diretórios datasets/originais e datasets/csv simulam, respectivamente, a camada de ingestão (landing) e a camada bronze de um data lake. Em ambientes de produção estes ficheiros estariam num armazenamento de objetos (por exemplo S3, Azure Blob ou GCS) e seriam divididos de acordo com o período de recolha.
 
 ## 1) Coleta e Ingestão de Dados
 
@@ -77,7 +78,7 @@ Com isso, o processo de ingestão foi comprovadamente executado na plataforma-al
 
 ### Objetivo
 Transformar os dados brutos do DataSUS em um modelo dimensional no formato **Star Schema**, pronto para análise em saúde pública.  
-O processo foi feito integralmente com o **dbt**, organizando as transformações em camadas, criando tabelas fato e dimensões, implementando testes de qualidade e gerando documentação.
+O processo foi feito integralmente com o **dbt**, através da organização e transformação em camadas, criação de tabelas de fato e de dimensão, implementação de testes de qualidade e documentação.
 
 ---
 
