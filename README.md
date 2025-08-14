@@ -192,89 +192,173 @@ A imagem abaixo apresenta o grafo de dependência dos modelos no dbt, evidencian
 
 ![Lineage Graph](images/lineage_graph.png)
 
-
 ## 3) Escolha da Plataforma + Bónus
 
-O projeto utiliza **Snowflake** como **data warehouse** principal para armazenamento e consumo dos dados modelados, complementado pelo **Databricks** para demonstração de **interoperabilidade entre plataformas** (bónus).
+O projeto utiliza o Snowflake como Data Warehouse principal para ingestão, modelagem e consumo dos dados, complementado pelo Databricks para demonstrar interoperabilidade entre plataformas.
 
----
+**Justificação da escolha do Snowflake:**
+1. **Escalabilidade elástica** — permite ajustar computação e armazenamento de forma independente, adaptando o warehouse (BOOTCAMP_WH) ao volume de dados e complexidade das consultas.
+2. **Recursos avançados de gestão** — Time Travel e Zero-Copy Cloning possibilitam versionamento e recuperação de dados, facilitando testes e auditorias sem duplicação física.
+3. **Integração otimizada com dbt** — o adaptador dbt-snowflake permite executar modelos, testes e documentação diretamente no Snowflake, com materializações eficientes.
+4. **Ingestão simplificada** — stages internos e comandos COPY INTO aceleram o carregamento de CSVs, reduzindo overhead e complexidade.
 
-### Motivos para a escolha do Snowflake
-1. **Escalabilidade elástica:** permite ajustar computação e armazenamento de forma independente, adaptando o warehouse (`BOOTCAMP_WH`) às necessidades de carga e consulta.
-2. **Recursos avançados de gestão de dados:** funcionalidades como *Time Travel* e *Zero-Copy Cloning* permitem versionamento, recuperação e experimentação de pipelines sem duplicar dados fisicamente.
-3. **Integração com dbt:** o conector `dbt-snowflake` garante testes, documentação e materializações diretamente no Snowflake com baixo overhead.
-4. **Ingestão simplificada:** o comando `COPY INTO` aliado a *stages* internos e *file formats* torna o carregamento de CSVs direto e eficiente.
+### Arquitetura Híbrida
 
----
+Além do pipeline completo no Snowflake, foi configurada uma integração simples entre Databricks ↔ Snowflake para leitura e comparação de dados:
 
-### Arquitetura e Interoperabilidade (Bónus)
-Para além da execução completa do pipeline no Snowflake, foi configurada **integração com o Databricks** de duas formas:
+1. **Lakehouse Federation (Snowflake → Databricks)**
+- Criação de CONNECTION e FOREIGN CATALOG no Databricks para o banco HEALTH_INSIGHTS do Snowflake.
+- Permite consultar dimensões e fatos diretamente no Databricks sem exportar ficheiros.
+- Exemplo:
+   ```sql
+   SHOW SCHEMAS IN CATALOG sf_hi;
+   SELECT COUNT(*) FROM sf_hi.raw_stg_marts.fato_nascimentos;
+   ```
 
-1. **Lakehouse Federation (Snowflake → Databricks)**  
-   - Configuração de uma **`CONNECTION`** no Databricks para o Snowflake.  
-   - Criação de um **`FOREIGN CATALOG sf_hi`** que espelha o banco de dados `HEALTH_INSIGHTS` no Databricks.  
-   - Permite consultar as tabelas finais (*marts*, dimensões e fatos) diretamente no Databricks, sem mover ficheiros, usando SQL nativo.
-   - Exemplo:
-     ```sql
-     SHOW SCHEMAS IN CATALOG sf_hi;
-     SELECT COUNT(*) FROM sf_hi.raw_stg_marts.fato_nascimentos;
-     ```
+2. **Snapshot para Delta (Databricks)**
+- Criação de tabela Delta (health_insights.silver.fato_nascimentos_delta) a partir da leitura do catálogo federado.
+- Permite comparar resultados e validar consistência:
+   ```sql
+   SELECT 'sf' src, COUNT(*) c FROM sf_hi.raw_stg_marts.fato_nascimentos
+   UNION ALL
+   SELECT 'delta' src, COUNT(*) c FROM health_insights.silver.fato_nascimentos_delta;
+   ```
+   **Resultado:** contagens iguais, o que confirma a sincronização entre as plataformas.
 
-2. **Exportação de Silver (Databricks → Snowflake)** *(opcional demonstrativo)*  
-   - Os dados processados no Databricks em formato Delta podem ser exportados para CSV (`COPY INTO DIRECTORY` em *Volumes*).  
-   - Estes ficheiros são carregados para o *stage* interno do Snowflake e ingeridos na camada RAW com `COPY INTO`.
-
----
-
-### Vantagens da abordagem híbrida
-- **Flexibilidade:** uso do Databricks para exploração e pré-processamento em Delta Lake, e Snowflake para modelagem final e consumo analítico.
-- **Performance:** otimizações do Delta Lake (*OPTIMIZE*, *ZORDER*, *VACUUM*) combinadas com clustering automático e escalabilidade do Snowflake.
-- **Sem duplicação de dados:** leitura direta de tabelas entre plataformas via Lakehouse Federation.
-- **Demonstração prática:** mostra domínio de múltiplas ferramentas e padrões de integração no contexto de dados complexos de saúde.
-
----
-
-### Diagrama do fluxo de interoperabilidade
-
-```plaintext
-DataSUS (.DBC → .CSV)
-        |
-        v
-  Snowflake (RAW → staging → marts via dbt)
-        |
-        +----> Databricks (Lakehouse Federation lê os marts diretamente)
-        |
-        +----> (Opcional) Databricks processa dados → exporta CSV → Snowflake RAW
-
+### Vantagens desta abordagem
+- **Flexibilidade:** exploração em Delta Lake e consumo analítico em Snowflake.
+- **Performance combinada:** OPTIMIZE/ZORDER no Databricks e clustering no Snowflake.
+- **Sem duplicação desnecessária:** leitura direta de dados entre plataformas.
+- **Demonstração de domínio técnico:** mostra alguma experiência com arquitetura híbrida e ferramentas complementares.
 
 ## 4) Orquestração e Automação
 
-Para manter a pipeline atualizada sem intervenção manual, uma estratégia de orquestração foi delineada. No Snowflake, as Tasks podem agendar execuções de SQL ou de modelos dbt. O exemplo abaixo cria uma task para refresh diário da tabela fato, filtrando apenas nascimentos do primeiro semestre de 2023:
+Para evitar execuções manuais e garantir que os dados estejam sempre atualizados, foi definido um plano de orquestração baseado no Snowflake Tasks.
+Esta funcionalidade permite agendar e automatizar execuções SQL (incluindo modelos dbt via dbt Cloud ou dbt CLI) diretamente na plataforma.
 
-```sql
-CREATE OR REPLACE TASK TASK_REFRESH_FATO_NASCIMENTOS
-  WAREHOUSE = BOOTCAMP_WH
-  SCHEDULE = 'USING CRON 0 3 * * * Europe/Lisbon'
-AS
-CREATE OR REPLACE TABLE HEALTH_INSIGHTS.MARTS.FATO_NASCIMENTOS AS
-SELECT *
-FROM HEALTH_INSIGHTS.SILVER.INT_BIRTHS_ENRICHED
-WHERE DTNASC BETWEEN '2023-01-01' AND '2023-06-30';
+### Exemplo de Task no Snowflake
+O exemplo abaixo cria uma task para atualizar diariamente a tabela FATO_NASCIMENTOS, filtrando apenas registros do 1º semestre de 2023:
+   ```sql
+   CREATE OR REPLACE TASK TASK_REFRESH_FATO_NASCIMENTOS
+   WAREHOUSE = BOOTCAMP_WH
+   SCHEDULE = 'USING CRON 0 3 * * * Europe/Lisbon'
+   AS
+   CREATE OR REPLACE TABLE HEALTH_INSIGHTS.MARTS.FATO_NASCIMENTOS AS
+   SELECT *
+   FROM HEALTH_INSIGHTS.SILVER.INT_BIRTHS_ENRICHED
+   WHERE DTNASC BETWEEN '2023-01-01' AND '2023-06-30';
 
-ALTER TASK TASK_REFRESH_FATO_NASCIMENTOS RESUME;
-```
+   -- Ativar a task
+   ALTER TASK TASK_REFRESH_FATO_NASCIMENTOS RESUME;
+   ```
 
-Em contextos mais complexos, um orquestrador dedicado como Airflow, Dagster ou o Databricks Workflows poderia disparar a ingestão de novos arquivos FTP, acionar os jobs dbt e atualizar dashboards. O importante é definir a frequência (diária, semanal) e mapear dependências (ex.: ingestão → staging → marts → dashboard).
+### Fluxo da automação com Snowflake Tasks:
+   ```csharp
+   [Ingestão (CSV → RAW)]
+          ↓
+   [Transformações dbt (staging, intermediate, marts)]
+          ↓
+   [Snowflake Task agenda atualização diária]
+          ↓
+   [Dados prontos para consumo no dashboard]
+   ```
+
+### Escalando para arquiteturas mais complexas
+
+Em cenários de maior complexidade, a orquestração poderia ser expandida com:
+- **Airflow / Dagster** → pipeline com múltiplos passos e dependências.
+- **Databricks Workflows** → integração direta com processamento Delta e execução dbt.
+- **Disparo de dashboards** → atualização automática de visualizações após atualização dos dados.
+
+------------
 
 ## 5) Dashboard e Principais Insights
 
-Foi criado um dashboard em Streamlit (ficheiro app/hi_dashboard_3in1.py) que conecta ao Snowflake e apresenta indicadores-chave e gráficos interativos. Na figura seguinte está um exemplo de output com dados fictícios ilustrativos:
+Dashboard (Streamlit)
+
+Foi criado um dashboard em Streamlit (app/hi_dashboard_3in1.py) que se conecta ao Snowflake e consome os modelos finais do dbt (camada marts). O objetivo é dar uma visão rápida do 1.º semestre de 2023 (H1).
+
+A figura abaixo é um exemplo com dados fictícios apenas para ilustrar a interface.
+
+O que o dashboard apresenta
+
+KPIs principais
+
+Nascimentos no semestre (H1) e variação vs. H1 do ano anterior
+
+Taxa de prematuridade (% < 37 semanas)
+
+Taxa de cesarianas
+
+Tendência temporal
+Linha de nascimentos por mês no H1/2023, para observar sazonalidade e quebras/picos.
+
+Distribuição por tipo de parto
+Gráfico de pizza/barras com proporção entre parto normal, cesariana e outros.
+
+Filtros (quando aplicável)
+UF e município (se a dimensão estiver disponível), intervalo de meses/anos.
+
+De onde vêm os dados
+
+O app lê diretamente de tabelas/vistas na camada marts:
+
+marts.fato_nascimentos — fatos com chaves e medidas.
+
+marts.dim_tempo — suporte à agregação mensal.
+
+marts.dim_localidade — UF/município (quando usado).
+
+(Opcional) marts.kpis_mensais — vista agregada para acelerar o dashboard.
+
+Definições de métricas (no dbt)
+
+Prematuridade = nascidos_com_gestacao_semanas < 37 / nascidos_totais
+
+Cesarianas = partos_com_tipo_cesariana / nascidos_totais
+
+Variação vs. ano anterior = (H1_ano_atual - H1_ano_anterior) / H1_ano_anterior
+
+As métricas são materializadas em SQL no dbt para garantir reprodutibilidade e performance.
+
+Como o app se liga ao Snowflake
+
+O hi_dashboard_3in1.py usa snowflake-connector-python. As credenciais são lidas de variáveis de ambiente:
+
+SNOWFLAKE_ACCOUNT, SNOWFLAKE_USER, SNOWFLAKE_PASSWORD
+
+SNOWFLAKE_ROLE, SNOWFLAKE_WAREHOUSE, SNOWFLAKE_DATABASE, SNOWFLAKE_SCHEMA
+
+O app aplica cache (st.cache_data) nas queries mais pesadas para reduzir latência.
+
+Como executar localmente
+
+Criar e ativar o venv e instalar dependências:
+
+pip install -r requirements.txt
 
 
-Este dashboard demonstra:
-- **KPIs principais:** total de nascimentos no semestre, comparação com o ano anterior, taxa de prematuridade, taxa de cesarianas.
-- **Gráfico de tendência:** número de nascimentos por mês (H1 2023), permitindo observar sazonalidades.
-- **Distribuição de tipos de parto:** proporção entre partos normais, cesáreos e outros.
+Definir as variáveis de ambiente do Snowflake (ou .streamlit/secrets.toml).
+
+Correr o app:
+
+streamlit run app/hi_dashboard_3in1.py
+
+Decisões de design
+
+Simplicidade primeiro: 3 cartões de KPI + 2 gráficos cobrem 80% das perguntas iniciais.
+
+Agregado no warehouse: cálculos feitos no Snowflake (dbt) → respostas rápidas e consistentes.
+
+Reprodutível: todas as métricas têm expressão SQL documentada nos modelos.
+
+Limitações e próximos passos rápidos
+
+No MVP, a análise está focada em H1/2023; facilmente extensível para mais períodos.
+
+Adicionar alertas simples (EARS) quando uma taxa desvia > 3σ da média recente.
+
+Publicar o app no Streamlit Cloud/Render com deploy automático (GitHub Actions).
 
 ## 6) Inovação e Diferenciação 
 
@@ -285,16 +369,3 @@ Para além dos requisitos básicos, foram consideradas as seguintes inovações:
 - **Discussão sobre anonimização:** embora os dados de SINASC sejam anonimizados, scripts adicionais podem aplicar técnicas de pseudonimização (hashing de IDs, agregação de datas) para mitigar riscos em casos de bases sensíveis.
 **GitOps / CI/CD para dbt:** o repositório pode ser conectado a um pipeline CI (GitHub Actions) que execute dbt run e dbt test a cada push, além de publicar a documentação dbt numa página estática.
 
-## 7) Troubleshooting rápido
-
-- Erro ao instalar pysus/pyreaddbc: confirme a instalação de build-essential e zlib1g-dev. Tente pip install --no-cache-dir --force-reinstall --verbose pysus. Como fallback, utilize o R com read.dbc para converter .dbc em .csv.
-
-- Variação de schema entre anos: os modelos stg_births.sql utilizam try_to_* e CASE para tolerar formatos diferentes. Ajuste-os conforme necessário.
-
-- Datas em formato numérico (YYYYMMDD): stg_births.sql converte automaticamente formatos mistos.
-
-- Credenciais Snowflake no Streamlit: configure via variáveis de ambiente SNOWFLAKE_ACCOUNT, SNOWFLAKE_USER, SNOWFLAKE_PASSWORD, etc., ou use um ficheiro .env com python-dotenv.
-
-## 8) Licença / Notas
-
-Este projeto tem fins educacionais. Os dados do SINASC são públicos e regidos pelas políticas do Ministério da Saúde do Brasil. Ajuste o período e a unidade federativa (UF) conforme a sua necessidade.

@@ -2,6 +2,7 @@ import os, json
 from pathlib import Path
 import pandas as pd
 import streamlit as st
+import numpy as np
 
 st.set_page_config(page_title="Health Insights — 3 em 1 (Snowflake | Databricks | dbt)", layout="wide")
 st.title("Health Insights — Nascimentos (3 em 1)")
@@ -41,6 +42,11 @@ def query_dbsql(sql):
     )
     with dbsql.connect(**cfg) as conn:
         return _lower(pd.read_sql(sql, conn))
+    
+def ears_c3(s, w=3, k=3):
+    roll = s.shift(1).rolling(w)
+    mu, sigma = roll.mean(), roll.std(ddof=0).replace(0, 1e-9)
+    return s > mu + k * sigma
 
 def render_data_tab(run_query, table_fqn):
     # bounds
@@ -78,6 +84,42 @@ def render_data_tab(run_query, table_fqn):
     c2.metric("Peso médio (g)", f"{float(k.get('peso_medio_g', 0)):.0f}")
     c3.metric("Prematuros (%)", f"{float(k.get('pct_prematuros', 0.0)):.2f}")
     c4.metric("Cesarianas (%)", f"{float(k.get('pct_cesareas', 0.0)):.2f}")
+
+    # ----- Monitor de qualidade -----
+    qm_df = run_query(f"""
+        select 
+            current_timestamp as verificado_em,
+            count(*) as total_registos,
+            count_if(birth_date is null) as nulos_birth_date,
+            count(distinct sk_nascimento) as ids_unicos,
+            (count(*) - count(distinct sk_nascimento)) as duplicados
+        from {table_fqn}
+    """)
+
+    if not qm_df.empty:
+        qm = qm_df.iloc[0]
+        if qm['nulos_birth_date'] == 0 and qm['duplicados'] == 0:
+            cor = "🟢"
+        elif qm['nulos_birth_date'] < 10:
+            cor = "🟡"
+        else:
+            cor = "🔴"
+        st.metric("Qualidade dos Dados", f"{cor} {qm['verificado_em']:%Y-%m-%d}")
+
+    # ----- Alerta epidemiológico (ex.: baixo peso) -----
+    alert_df = run_query(f"""
+        select ym, 
+           count_if(birth_weight_g < 2500) / count(*)::float as taxa_baixo_peso
+        from {table_fqn}
+        {clause}
+        group by ym
+    o   rder by ym
+    """)
+
+    if not alert_df.empty:
+        alert_df['alerta'] = ears_c3(alert_df['taxa_baixo_peso'])
+    if alert_df['alerta'].any():
+        st.warning("⚠️ Alerta: taxa de baixo peso acima do esperado em um ou mais meses!")
 
     # Mensal
     mensal = run_query(f"""
