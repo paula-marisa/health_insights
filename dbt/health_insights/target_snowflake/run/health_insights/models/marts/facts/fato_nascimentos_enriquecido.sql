@@ -1,27 +1,30 @@
-
+-- back compat for old kwarg name
   
+  begin;
+    
+        
+            
+	    
+	    
+            
+        
     
 
-create or replace transient table HEALTH_INSIGHTS.marts.fato_nascimentos_enriquecido
     
-    
-    
-    as (-- models/marts/fato_nascimentos_enriquecido.sql
 
+    merge into HEALTH_INSIGHTS.marts.fato_nascimentos_enriquecido as DBT_INTERNAL_DEST
+        using HEALTH_INSIGHTS.marts.fato_nascimentos_enriquecido__dbt_tmp as DBT_INTERNAL_SOURCE
+        on ((DBT_INTERNAL_SOURCE.sk_birth = DBT_INTERNAL_DEST.sk_birth))
 
-with f as (
-  select * from HEALTH_INSIGHTS.silver.int_births_enriched
-)
-select
-  f.*,
-  d.sk_localidade,
-  d.nome_municipio,
-  d.state_name
-from f
-left join HEALTH_INSIGHTS.marts.dim_localidade d
-  on d.municipality_code = f.municipality_code
-    )
+    
+    when matched then update set
+        "SK_BIRTH" = DBT_INTERNAL_SOURCE."SK_BIRTH","MUNICIPALITY_CODE" = DBT_INTERNAL_SOURCE."MUNICIPALITY_CODE","BIRTH_DATE" = DBT_INTERNAL_SOURCE."BIRTH_DATE","YEAR_MONTH_DATE" = DBT_INTERNAL_SOURCE."YEAR_MONTH_DATE","YM" = DBT_INTERNAL_SOURCE."YM","SEX_NEWBORN" = DBT_INTERNAL_SOURCE."SEX_NEWBORN","BIRTH_WEIGHT_G" = DBT_INTERNAL_SOURCE."BIRTH_WEIGHT_G","GESTATIONAL_WEEKS" = DBT_INTERNAL_SOURCE."GESTATIONAL_WEEKS","DELIVERY_TYPE" = DBT_INTERNAL_SOURCE."DELIVERY_TYPE","STATE_CODE" = DBT_INTERNAL_SOURCE."STATE_CODE","SK_LOCALIDADE" = DBT_INTERNAL_SOURCE."SK_LOCALIDADE","NOME_MUNICIPIO" = DBT_INTERNAL_SOURCE."NOME_MUNICIPIO","STATE_NAME" = DBT_INTERNAL_SOURCE."STATE_NAME"
+    
+
+    when not matched then insert
+        ("SK_BIRTH", "MUNICIPALITY_CODE", "BIRTH_DATE", "YEAR_MONTH_DATE", "YM", "SEX_NEWBORN", "BIRTH_WEIGHT_G", "GESTATIONAL_WEEKS", "DELIVERY_TYPE", "STATE_CODE", "SK_LOCALIDADE", "NOME_MUNICIPIO", "STATE_NAME")
+    values
+        ("SK_BIRTH", "MUNICIPALITY_CODE", "BIRTH_DATE", "YEAR_MONTH_DATE", "YM", "SEX_NEWBORN", "BIRTH_WEIGHT_G", "GESTATIONAL_WEEKS", "DELIVERY_TYPE", "STATE_CODE", "SK_LOCALIDADE", "NOME_MUNICIPIO", "STATE_NAME")
+
 ;
-
-
-  
+    commit;

@@ -1,4 +1,8 @@
-{{ config(materialized='view') }}
+{{ config(
+  materialized='view',
+  schema='silver',
+  create_view_as_replace=True
+) }}
 
 with s as (
   select * from {{ ref('stg_births') }}

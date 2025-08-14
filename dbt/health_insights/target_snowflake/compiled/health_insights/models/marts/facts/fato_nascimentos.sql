@@ -24,6 +24,12 @@ with src as (
     end as categoria_gestacao
   from HEALTH_INSIGHTS.silver.int_births_enriched
   
+    where birth_date >= (
+      select coalesce(max(t.data_dia),'1900-01-01'::date)
+      from HEALTH_INSIGHTS.marts.fato_nascimentos f
+      join HEALTH_INSIGHTS.marts.dim_tempo t on f.fk_sk_tempo = t.sk_tempo
+    )
+  
 ),
 
 lk_tempo as (
