@@ -367,3 +367,7 @@ Para além dos requisitos básicos do projeto, foram incluídas melhorias e idei
   - Executar `dbt run` e `dbt test` a cada commit.
   - Publicar automaticamente a documentação do dbt como página estática.
   - Validar a pipeline antes de merges para a branch principal.
+
+
+## 7) Conclusão
+Reconheço que ainda há muito por fazer neste projeto, desde a criação de novos KPI até à melhoria da integração entre as diferentes plataformas. Como nunca tinha trabalhado com estas ferramentas, acabei por demorar mais tempo do que gostaria, mas acredito que, com a prática, esse tempo irá diminuir. Agradeço à academia por esta experiência fantástica, que foi, sem dúvida, uma excelente oportunidade de aprendizagem e crescimento.
