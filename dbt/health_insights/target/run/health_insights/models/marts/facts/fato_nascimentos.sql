@@ -1,0 +1,30 @@
+-- back compat for old kwarg name
+  
+  begin;
+    
+        
+            
+	    
+	    
+            
+        
+    
+
+    
+
+    merge into HEALTH_INSIGHTS.marts.fato_nascimentos as DBT_INTERNAL_DEST
+        using HEALTH_INSIGHTS.marts.fato_nascimentos__dbt_tmp as DBT_INTERNAL_SOURCE
+        on ((DBT_INTERNAL_SOURCE.sk_birth = DBT_INTERNAL_DEST.sk_birth))
+
+    
+    when matched then update set
+        "SK_BIRTH" = DBT_INTERNAL_SOURCE."SK_BIRTH","FK_SK_TEMPO" = DBT_INTERNAL_SOURCE."FK_SK_TEMPO","FK_SK_LOCALIDADE" = DBT_INTERNAL_SOURCE."FK_SK_LOCALIDADE","FK_SK_RECEM_NASCIDO" = DBT_INTERNAL_SOURCE."FK_SK_RECEM_NASCIDO","SEX_NEWBORN" = DBT_INTERNAL_SOURCE."SEX_NEWBORN","BIRTH_WEIGHT_G" = DBT_INTERNAL_SOURCE."BIRTH_WEIGHT_G","GESTATIONAL_WEEKS" = DBT_INTERNAL_SOURCE."GESTATIONAL_WEEKS","DELIVERY_TYPE" = DBT_INTERNAL_SOURCE."DELIVERY_TYPE"
+    
+
+    when not matched then insert
+        ("SK_BIRTH", "FK_SK_TEMPO", "FK_SK_LOCALIDADE", "FK_SK_RECEM_NASCIDO", "SEX_NEWBORN", "BIRTH_WEIGHT_G", "GESTATIONAL_WEEKS", "DELIVERY_TYPE")
+    values
+        ("SK_BIRTH", "FK_SK_TEMPO", "FK_SK_LOCALIDADE", "FK_SK_RECEM_NASCIDO", "SEX_NEWBORN", "BIRTH_WEIGHT_G", "GESTATIONAL_WEEKS", "DELIVERY_TYPE")
+
+;
+    commit;
