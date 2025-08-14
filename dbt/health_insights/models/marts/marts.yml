@@ -9,11 +9,25 @@ models:
     tests: [ not_null ]
 
 - name: dim_localidade
+  description: "Dimensão de localidade (município/UF)."
   columns:
   - name: sk_localidade
-    tests: [ not_null, unique ]
-  - name: municipio_code
-    tests: [ not_null ]
+    tests:
+    - not_null
+    - unique
+
+  - name: municipality_code # <-- nome correto na tabela final
+    tests:
+    - not_null
+    - unique
+
+  - name: state_code
+    tests:
+    - not_null
+
+  - name: nome_municipio
+    tests:
+    - not_null
 
 - name: dim_recem_nascido
   columns:

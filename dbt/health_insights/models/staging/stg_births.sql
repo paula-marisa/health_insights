@@ -1,4 +1,4 @@
-{{ config(materialized='view') }}
+{{ config(materialized='view', create_view_as_replace=True) }}
 
 {# 1) descobrir as colunas disponíveis na fonte, de forma portátil #}
 {% set rel = source('raw_stg','sinasc_raw') %}

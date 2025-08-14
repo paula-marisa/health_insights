@@ -11,8 +11,9 @@ with src as (
     sex_newborn,
     birth_weight_g,
     gestational_weeks,
+    delivery_type,
     municipality_code,
-    -- categorias alinhadas com a dim_recem_nascido
+    -- categorias para link com dim_recem_nascido
     case
       when birth_weight_g is null then 'desconhecido'
       when birth_weight_g < 2500   then 'baixo_peso'
@@ -27,7 +28,6 @@ with src as (
     end as categoria_gestacao
   from {{ ref('int_births_enriched') }}
   {% if is_incremental() %}
-    -- janela incremental baseada na data (última data já carregada)
     where birth_date >= (
       select coalesce(max(t.data_dia),'1900-01-01'::date)
       from {{ this }} f
@@ -42,9 +42,7 @@ lk_tempo as (
 ),
 
 lk_localidade as (
-  -- atenção: na tua dimensão o campo chama-se municipio_code (pt),
-  -- no int chama-se municipality_code (en)
-  select sk_localidade, municipio_code
+  select sk_localidade, municipality_code
   from {{ ref('dim_localidade') }}
 ),
 
@@ -54,14 +52,20 @@ lk_recem as (
 )
 
 select
+  -- chaves
   s.sk_birth,
-  t.sk_tempo              as fk_sk_tempo,
-  dloc.sk_localidade      as fk_sk_localidade,
-  drec.sk_recem_nascido   as fk_sk_recem_nascido,
-  s.sex_newborn
+  t.sk_tempo            as fk_sk_tempo,
+  dloc.sk_localidade    as fk_sk_localidade,
+  drec.sk_recem_nascido as fk_sk_recem_nascido,
+
+  -- MEDIDAS / ATRIBUTOS para o dashboard
+  s.sex_newborn,
+  s.birth_weight_g,
+  s.gestational_weeks,
+  s.delivery_type
 from src s
 left join lk_tempo      t    on s.birth_date = t.data_dia
-left join lk_localidade dloc on s.municipality_code = dloc.municipio_code
+left join lk_localidade dloc on s.municipality_code = dloc.municipality_code
 left join lk_recem      drec
        on drec.sexo_bebe = s.sex_newborn
       and drec.categoria_peso = s.categoria_peso

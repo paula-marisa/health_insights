@@ -4,3 +4,7 @@ seeds:
   columns:
   - name: municipio_code
     tests: [ not_null, unique ]
+- name: ref_uf
+  columns:
+  - name: uf_sigla
+    tests: [ not_null, unique ]

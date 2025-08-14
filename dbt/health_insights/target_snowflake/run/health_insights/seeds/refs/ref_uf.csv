@@ -1,0 +1,12 @@
+
+    
+    
+    truncate table "HEALTH_INSIGHTS"."RAW_STG"."REF_UF";
+    -- dbt seed --
+    
+            insert into HEALTH_INSIGHTS.RAW_STG.ref_uf (uf_sigla, uf_nome) values
+            (%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s)
+        
+
+;
+  

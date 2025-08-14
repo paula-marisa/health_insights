@@ -1,35 +1,22 @@
 {{ config(materialized='view') }}
 
-WITH s AS (
-  SELECT * FROM {{ ref('stg_births') }}
+with s as (
+  select * from {{ ref('stg_births') }}
 )
-SELECT
+select
   s.sk_birth,
   s.municipality_code,
-
   s.birth_date,
-  {{ x_try_to_date("concat(s.ym, '-01')") }} AS year_month_date,  -- YYYY-MM-01
+  {{ x_try_to_date("concat(s.ym, '-01')") }} as year_month_date,
   s.ym,
 
+  -- CAMPOS QUE A FATO PRECISA:
   s.sex_newborn,
-  s.birth_weight_g,
-  s.gestation_code,
-  s.gestational_weeks,
-  s.delivery_type,
+  /* ajuste os nomes conforme existirem no teu stg_births */
+  s.birth_weight_g         as birth_weight_g,      -- se no stg for 'peso_nascimento_g', mapeia: s.peso_nascimento_g as birth_weight_g
+  s.gestational_weeks      as gestational_weeks,   -- idem ('semanas_gestacao' -> gestational_weeks)
+  s.delivery_type          as delivery_type,       -- idem ('tipo_parto' -> delivery_type)
 
-  substr(cast(s.municipality_code as string), 1, 2) AS state_code,
-
-  CASE
-    WHEN s.birth_weight_g IS NULL THEN 'desconhecido'
-    WHEN s.birth_weight_g < 2500   THEN 'baixo_peso'
-    WHEN s.birth_weight_g >= 4000  THEN 'macrossomico'
-    ELSE 'adequado'
-  END AS birth_weight_category,
-
-  CASE
-    WHEN s.gestational_weeks IS NULL THEN 'desconhecido'
-    WHEN s.gestational_weeks < 37    THEN 'pre_termo'
-    WHEN s.gestational_weeks BETWEEN 37 AND 41 THEN 'termo'
-    WHEN s.gestational_weeks >= 42   THEN 'pos_termo'
-  END AS gestation_category
-FROM s
+  -- outros campos úteis
+  substr(cast(s.municipality_code as string), 1, 2) as state_code
+from s

@@ -69,8 +69,10 @@
 
 {% macro x_dow_iso(e) %}
   {% if target.type in ['databricks','spark'] %}
-    cast(date_format({{ e }}, 'u') as int)   -- ISO: 1..7 (Seg..Dom)
+    -- dayofweek: Dom=1 .. Sab=7 → converter para ISO (Seg=1 .. Dom=7)
+    (((dayofweek({{ e }}) + 5) % 7) + 1)
   {% else %}
     dayofweekiso({{ e }})
   {% endif %}
 {% endmacro %}
+

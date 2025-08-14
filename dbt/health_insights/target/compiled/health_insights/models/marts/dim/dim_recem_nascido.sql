@@ -5,7 +5,7 @@ WITH s AS (
     sex_newborn,
     birth_weight_g,
     gestational_weeks
-  FROM HEALTH_INSIGHTS.RAW_STG_silver.int_births_enriched
+  FROM `health_insights`.`silver`.`int_births_enriched`
 )
 SELECT
   md5(

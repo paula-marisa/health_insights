@@ -1,0 +1,20 @@
+
+    
+    
+    
+    create or replace table `health_insights`.`raw_stg_marts`.`ref_uf` (uf_sigla string ,uf_nome string )
+    using delta
+    
+    
+    
+    
+    
+  ;
+    -- dbt seed --
+    
+          insert overwrite `health_insights`.`raw_stg_marts`.`ref_uf` values
+          (%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s)
+      
+
+;
+  

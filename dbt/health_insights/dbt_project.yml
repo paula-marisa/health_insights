@@ -42,6 +42,8 @@ models:
       +enabled: "{{ target.type in ['databricks','spark'] or target.name == 'prod' }}"
 
 seeds:
-  +database: "{{ 'HEALTH_INSIGHTS' if target.type == 'snowflake' else (target.catalog or 'main') }}"
-  +schema: "{{ 'RAW_STG'        if target.type == 'snowflake' else 'raw_stg' }}"
-  +quote_columns: false
+  health_insights:
+    +database: "{{ 'HEALTH_INSIGHTS' if target.type == 'snowflake' else (target.catalog or 'health_insights') }}"
+    +schema: >
+      {% if target.type == 'snowflake' %}RAW_STG{% else %}raw_stg_marts{% endif %}
+    +quote_columns: false

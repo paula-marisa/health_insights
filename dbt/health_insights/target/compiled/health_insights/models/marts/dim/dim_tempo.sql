@@ -6,13 +6,13 @@ with d as (
     cast(birth_date as date)
   
  as data
-  from HEALTH_INSIGHTS.RAW_STG_silver.int_births_enriched
+  from `health_insights`.`silver`.`int_births_enriched`
   where birth_date is not null
 )
 select
   md5(
   
-    to_char(data, 'YYYY-MM-DD')
+    date_format(data, 'yyyy-MM-dd')
   
 )      as sk_tempo,
   data                                as data_dia,
@@ -20,18 +20,20 @@ select
   month(data)                         as mes,
   
   
-    to_char(data, 'YYYY-MM')
+    date_format(data, 'yyyy-MM')
   
              as ym,
   quarter(data)                       as trimestre,
   
   
-    dayofweekiso(data)
+    -- dayofweek: Dom=1 .. Sab=7 → converter para ISO (Seg=1 .. Dom=7)
+    (((dayofweek(data) + 5) % 7) + 1)
   
              as dia_semana_iso,
   case when 
   
-    dayofweekiso(data)
+    -- dayofweek: Dom=1 .. Sab=7 → converter para ISO (Seg=1 .. Dom=7)
+    (((dayofweek(data) + 5) % 7) + 1)
   
  in (6,7) then 1 else 0 end as is_fim_semana
 from d
