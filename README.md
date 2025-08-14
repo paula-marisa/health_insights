@@ -274,98 +274,96 @@ Em cenários de maior complexidade, a orquestração poderia ser expandida com:
 
 ## 5) Dashboard e Principais Insights
 
-Dashboard (Streamlit)
+O dashboard foi desenvolvido em **Streamlit** (`app/hi_dashboard_3in1.py`) e conecta-se diretamente ao **Snowflake**, consumindo os modelos finais da camada `marts` criada pelo dbt.  
+O objetivo é fornecer uma visão rápida e interativa dos dados referentes ao **1.º semestre de 2023 (H1)**.
 
-Foi criado um dashboard em Streamlit (app/hi_dashboard_3in1.py) que se conecta ao Snowflake e consome os modelos finais do dbt (camada marts). O objetivo é dar uma visão rápida do 1.º semestre de 2023 (H1).
+### Funcionalidades
 
-A figura abaixo é um exemplo com dados fictícios apenas para ilustrar a interface.
-
-O que o dashboard apresenta
-
-KPIs principais
-
-Nascimentos no semestre (H1) e variação vs. H1 do ano anterior
-
-Taxa de prematuridade (% < 37 semanas)
-
-Taxa de cesarianas
-
-Tendência temporal
-Linha de nascimentos por mês no H1/2023, para observar sazonalidade e quebras/picos.
-
-Distribuição por tipo de parto
-Gráfico de pizza/barras com proporção entre parto normal, cesariana e outros.
-
-Filtros (quando aplicável)
-UF e município (se a dimensão estiver disponível), intervalo de meses/anos.
-
-De onde vêm os dados
-
-O app lê diretamente de tabelas/vistas na camada marts:
-
-marts.fato_nascimentos — fatos com chaves e medidas.
-
-marts.dim_tempo — suporte à agregação mensal.
-
-marts.dim_localidade — UF/município (quando usado).
-
-(Opcional) marts.kpis_mensais — vista agregada para acelerar o dashboard.
-
-Definições de métricas (no dbt)
-
-Prematuridade = nascidos_com_gestacao_semanas < 37 / nascidos_totais
-
-Cesarianas = partos_com_tipo_cesariana / nascidos_totais
-
-Variação vs. ano anterior = (H1_ano_atual - H1_ano_anterior) / H1_ano_anterior
-
-As métricas são materializadas em SQL no dbt para garantir reprodutibilidade e performance.
-
-Como o app se liga ao Snowflake
-
-O hi_dashboard_3in1.py usa snowflake-connector-python. As credenciais são lidas de variáveis de ambiente:
-
-SNOWFLAKE_ACCOUNT, SNOWFLAKE_USER, SNOWFLAKE_PASSWORD
-
-SNOWFLAKE_ROLE, SNOWFLAKE_WAREHOUSE, SNOWFLAKE_DATABASE, SNOWFLAKE_SCHEMA
-
-O app aplica cache (st.cache_data) nas queries mais pesadas para reduzir latência.
-
-Como executar localmente
-
-Criar e ativar o venv e instalar dependências:
-
-pip install -r requirements.txt
+- **KPIs principais**
+  - Número total de nascimentos no H1/2023 e variação percentual em relação ao H1/2022.
+  - Taxa de prematuridade (% nascimentos < 37 semanas).
+  - Taxa de cesarianas.
+  
+- **Tendência temporal**
+  - Gráfico de linha com evolução mensal dos nascimentos no H1/2023.
 
 
-Definir as variáveis de ambiente do Snowflake (ou .streamlit/secrets.toml).
+### Origem dos dados no dashboard
 
-Correr o app:
+- `marts.fato_nascimentos` — tabela fato principal, contendo chaves e métricas.
+- `marts.dim_tempo` — suporte para agregações temporais.
+- `marts.dim_localidade` — dados de UF e município.
+- *(Opcional)* `marts.kpis_mensais` — vista agregada para otimizar a performance.
 
-streamlit run app/hi_dashboard_3in1.py
+---
 
-Decisões de design
+### Definição das métricas (dbt)
 
-Simplicidade primeiro: 3 cartões de KPI + 2 gráficos cobrem 80% das perguntas iniciais.
+- **Prematuridade** = `nascidos_com_gestacao_semanas < 37` / `nascidos_totais`
+- **Cesarianas** = `partos_com_tipo_cesariana` / `nascidos_totais`
+- **Variação vs. ano anterior** = `(H1_ano_atual - H1_ano_anterior) / H1_ano_anterior`
 
-Agregado no warehouse: cálculos feitos no Snowflake (dbt) → respostas rápidas e consistentes.
+### Ligação ao Snowflake
 
-Reprodutível: todas as métricas têm expressão SQL documentada nos modelos.
+O ficheiro `hi_dashboard_3in1.py` utiliza **snowflake-connector-python** para ligar ao Snowflake.  
+As credenciais são lidas de variáveis de ambiente:
+- `SNOWFLAKE_ACCOUNT`
+- `SNOWFLAKE_USER`
+- `SNOWFLAKE_PASSWORD`
+- `SNOWFLAKE_ROLE`
+- `SNOWFLAKE_WAREHOUSE`
+- `SNOWFLAKE_DATABASE`
+- `SNOWFLAKE_SCHEMA`
 
-Limitações e próximos passos rápidos
 
-No MVP, a análise está focada em H1/2023; facilmente extensível para mais períodos.
+### Como executar localmente
 
-Adicionar alertas simples (EARS) quando uma taxa desvia > 3σ da média recente.
+1. Criar e ativar o ambiente virtual:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # Linux/Mac
+   venv\Scripts\activate     # Windows
+   pip install -r requirements.txt
+   ```
+2. Definir as variáveis de ambiente do Snowflake ou criar o ficheiro `.streamlit/secrets.toml`.
 
-Publicar o app no Streamlit Cloud/Render com deploy automático (GitHub Actions).
+3. Executar o app:
+   ```bash
+   streamlit run app/hi_dashboard_3in1.py
+   ```
 
-## 6) Inovação e Diferenciação 
+---
 
-Para além dos requisitos básicos, foram consideradas as seguintes inovações:
+### Decisões de design
 
-- **Mecanismo de alerta epidemiológico simples:** adicionando modelos dbt que calculam variações semanais na taxa de prematuridade ou mortalidade, é possível gerar alertas quando ultrapassam um limiar pré-definido.
-- **Integração de novas fontes:** o script de ingestão foi pensado de forma modular para incorporar dados de outras bases do SUS (SIH, SIM) ou de atendimentos de emergência quase em tempo real, enriquecendo a análise de nascimentos com desfechos hospitalares.
-- **Discussão sobre anonimização:** embora os dados de SINASC sejam anonimizados, scripts adicionais podem aplicar técnicas de pseudonimização (hashing de IDs, agregação de datas) para mitigar riscos em casos de bases sensíveis.
-**GitOps / CI/CD para dbt:** o repositório pode ser conectado a um pipeline CI (GitHub Actions) que execute dbt run e dbt test a cada push, além de publicar a documentação dbt numa página estática.
+- **Simplicidade**: 3 cartões KPI + 2 gráficos.
+- **Agregação no warehouse**: cálculos feitos no Snowflake via dbt para garantir consistência e velocidade.
+- **Reprodutibilidade**: todas as métricas têm expressões SQL documentadas nos modelos.
 
+
+### Limitações e próximos passos
+
+- Atualmente focado no H1/2023, mas facilmente extensível para mais períodos.
+- Possibilidade de incluir **alertas automáticos** quando indicadores ultrapassam desvios-padrão da média.
+- Publicar o dashboard no **Streamlit Cloud** ou **Render** com deploy contínuo.
+
+
+## 6) Inovação e Diferenciação
+
+Para além dos requisitos básicos do projeto, foram incluídas melhorias e ideias inovadoras:
+
+- **Mecanismo de alerta epidemiológico simples**  
+  Modelos dbt adicionais calculam variações semanais nas taxas de prematuridade ou mortalidade.  
+  Quando os valores ultrapassam um limiar pré-definido, podem gerar alertas automáticos.
+
+- **Integração com novas fontes de dados**  
+  O processo de ingestão foi estruturado para permitir fácil inclusão de dados de outras bases do SUS (ex.: SIH, SIM) ou até dados quase em tempo real de serviços de urgência, permitindo análises mais ricas.
+
+- **Discussão sobre anonimização**  
+  Apesar do SINASC já ser anonimizado, foram considerados métodos adicionais de pseudonimização (hashing de IDs, agregação de datas) para aumentar a proteção em casos de dados sensíveis.
+
+- **GitOps / CI/CD para dbt**  
+  Integração com **GitHub Actions** para:
+  - Executar `dbt run` e `dbt test` a cada commit.
+  - Publicar automaticamente a documentação do dbt como página estática.
+  - Validar a pipeline antes de merges para a branch principal.

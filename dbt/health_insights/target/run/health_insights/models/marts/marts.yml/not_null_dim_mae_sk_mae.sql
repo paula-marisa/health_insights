@@ -13,7 +13,7 @@
 
 
 select sk_mae
-from HEALTH_INSIGHTS.marts.dim_mae
+from `health_insights`.`marts`.`dim_mae`
 where sk_mae is null
 
 

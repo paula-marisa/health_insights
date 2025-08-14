@@ -5,7 +5,7 @@
 
 
 select state_code
-from HEALTH_INSIGHTS.marts.dim_localidade
+from `health_insights`.`marts`.`dim_localidade`
 where state_code is null
 
 

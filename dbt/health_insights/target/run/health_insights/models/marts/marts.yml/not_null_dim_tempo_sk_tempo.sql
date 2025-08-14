@@ -13,7 +13,7 @@
 
 
 select sk_tempo
-from HEALTH_INSIGHTS.marts.dim_tempo
+from `health_insights`.`marts`.`dim_tempo`
 where sk_tempo is null
 
 

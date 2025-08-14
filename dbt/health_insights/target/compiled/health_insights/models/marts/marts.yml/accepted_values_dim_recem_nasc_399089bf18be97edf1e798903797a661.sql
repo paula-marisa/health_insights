@@ -8,7 +8,7 @@ with all_values as (
         categoria_peso as value_field,
         count(*) as n_records
 
-    from HEALTH_INSIGHTS.marts.dim_recem_nascido
+    from `health_insights`.`marts`.`dim_recem_nascido`
     group by categoria_peso
 
 )

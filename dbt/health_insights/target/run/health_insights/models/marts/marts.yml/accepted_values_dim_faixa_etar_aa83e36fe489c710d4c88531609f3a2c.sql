@@ -16,7 +16,7 @@ with all_values as (
         faixa_etaria_mae as value_field,
         count(*) as n_records
 
-    from HEALTH_INSIGHTS.marts.dim_faixa_etaria_sexo
+    from `health_insights`.`marts`.`dim_faixa_etaria_sexo`
     group by faixa_etaria_mae
 
 )

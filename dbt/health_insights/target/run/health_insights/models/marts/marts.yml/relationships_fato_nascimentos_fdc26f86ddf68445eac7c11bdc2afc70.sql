@@ -12,13 +12,13 @@
 
 with child as (
     select fk_sk_recem_nascido as from_field
-    from HEALTH_INSIGHTS.marts.fato_nascimentos
+    from `health_insights`.`marts`.`fato_nascimentos`
     where fk_sk_recem_nascido is not null
 ),
 
 parent as (
     select sk_recem_nascido as to_field
-    from HEALTH_INSIGHTS.marts.dim_recem_nascido
+    from `health_insights`.`marts`.`dim_recem_nascido`
 )
 
 select

@@ -1,7 +1,7 @@
 
 
 with s as (
-  select * from HEALTH_INSIGHTS.raw_stg.stg_births
+  select * from `health_insights`.`raw_stg`.`stg_births`
 )
 select
   s.sk_birth,
@@ -10,7 +10,7 @@ select
   
   
     
-      try_to_date(concat(s.ym, '-01'))
+      to_date(concat(s.ym, '-01'))
     
   
  as year_month_date,

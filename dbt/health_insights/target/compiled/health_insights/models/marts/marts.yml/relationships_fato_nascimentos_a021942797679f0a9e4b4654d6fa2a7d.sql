@@ -4,13 +4,13 @@
 
 with child as (
     select fk_sk_localidade as from_field
-    from HEALTH_INSIGHTS.marts.fato_nascimentos
+    from `health_insights`.`marts`.`fato_nascimentos`
     where fk_sk_localidade is not null
 ),
 
 parent as (
     select sk_localidade as to_field
-    from HEALTH_INSIGHTS.marts.dim_localidade
+    from `health_insights`.`marts`.`dim_localidade`
 )
 
 select

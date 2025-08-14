@@ -16,7 +16,7 @@ with all_values as (
         sex_newborn as value_field,
         count(*) as n_records
 
-    from HEALTH_INSIGHTS.marts.fato_nascimentos
+    from `health_insights`.`marts`.`fato_nascimentos`
     group by sex_newborn
 
 )

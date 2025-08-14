@@ -130,24 +130,16 @@ k as (
 
 norm as (
   select
-    -- usa CONTADOR/CODMUNNASC se existirem; caso contrário usa NULL para estabilizar o hash
-    md5(
-      coalesce( 
+    -- SK: usar macro portátil
+    md5(cast(coalesce(cast(coalesce(
   
     cast(CONTADOR as varchar)
   
- , '') || '-' ||
-      coalesce( 
+, '') as TEXT), '_dbt_utils_surrogate_key_null_') || '-' || coalesce(cast(coalesce(
   
     cast(CODMUNNASC as varchar)
   
- , '') || '-' ||
-      lpad(
-  
-    cast(rn as varchar)
-  
-, 10, '0')
-    ) as sk_birth,
+, '') as TEXT), '_dbt_utils_surrogate_key_null_') || '-' || coalesce(cast(lpad(cast(rn as TEXT), 10, '0') as TEXT), '_dbt_utils_surrogate_key_null_') as TEXT)) as sk_birth,
 
     -- data de nascimento: várias formas
     case
@@ -237,29 +229,39 @@ norm as (
       else 'U'
     end as sex_newborn,
 
+    -- nulos portáveis
              
   -- int funciona em Snowflake e Spark
   cast(PESO as int)
-        as birth_weight_g,
+
+               as birth_weight_g,
+
          
   
     cast(GESTACAO as varchar)
   
-    as gestation_code,
+
+            as gestation_code,
+
        
   -- int funciona em Snowflake e Spark
   cast(SEMAGESTAC as int)
-  as gestational_weeks,
+
+               as gestational_weeks,
+
             
   
     cast(PARTO as varchar)
   
-       as delivery_type,
+
+            as delivery_type,
+
        
   
     cast(CODMUNNASC as varchar)
   
-  as municipality_code
+
+            as municipality_code
   from k
 )
 

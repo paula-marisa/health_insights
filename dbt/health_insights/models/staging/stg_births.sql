@@ -1,6 +1,6 @@
 {{ config(materialized='view', create_view_as_replace=True) }}
 
-{# 1) descobrir as colunas disponíveis na fonte, de forma portátil #}
+{# 1) descobrir as colunas disponíveis na fonte #}
 {% set rel = source('raw_stg','sinasc_raw') %}
 {% set cols = adapter.get_columns_in_relation(rel) %}
 {% set colnames = cols | map(attribute='name') | map('lower') | list %}
@@ -10,7 +10,7 @@ with src as (
 ),
 
 k as (
-  {# 2) construir dinamicamente a lista para ORDER BY apenas com colunas existentes #}
+  {# 2) ORDER BY dinâmico só com colunas que existam #}
   {% set order_parts = [] %}
   {% for c, kind in [
       ('DTNASC','str'),
@@ -43,12 +43,12 @@ k as (
 
 norm as (
   select
-    -- usa CONTADOR/CODMUNNASC se existirem; caso contrário usa NULL para estabilizar o hash
-    md5(
-      coalesce({% if 'contador'   in colnames %} {{ x_str('CONTADOR') }} {% else %} cast(null as string) {% endif %}, '') || '-' ||
-      coalesce({% if 'codmunnasc' in colnames %} {{ x_str('CODMUNNASC') }} {% else %} cast(null as string) {% endif %}, '') || '-' ||
-      lpad({{ x_str('rn') }}, 10, '0')
-    ) as sk_birth,
+    -- SK: usar macro portátil
+    {{ dbt_utils.generate_surrogate_key([
+      "coalesce(" ~ ('contador'   in colnames and x_str('CONTADOR')   or "cast(null as " ~ dbt.type_string() ~ ")") ~ ", '')",
+      "coalesce(" ~ ('codmunnasc' in colnames and x_str('CODMUNNASC') or "cast(null as " ~ dbt.type_string() ~ ")") ~ ", '')",
+      "lpad(cast(rn as " ~ dbt.type_string() ~ "), 10, '0')"
+    ]) }} as sk_birth,
 
     -- data de nascimento: várias formas
     case
@@ -70,11 +70,21 @@ norm as (
       else 'U'
     end as sex_newborn,
 
-    {% if 'peso' in colnames %}         {{ x_int('PESO') }}       {% else %} cast(null as int)    {% endif %} as birth_weight_g,
-    {% if 'gestacao' in colnames %}     {{ x_str('GESTACAO') }}   {% else %} cast(null as string) {% endif %} as gestation_code,
-    {% if 'semagestac' in colnames %}   {{ x_int('SEMAGESTAC') }} {% else %} cast(null as int)    {% endif %} as gestational_weeks,
-    {% if 'parto' in colnames %}        {{ x_str('PARTO') }}      {% else %} cast(null as string) {% endif %} as delivery_type,
-    {% if 'codmunnasc' in colnames %}   {{ x_str('CODMUNNASC') }} {% else %} cast(null as string) {% endif %} as municipality_code
+    -- nulos portáveis
+    {% if 'peso' in colnames %}         {{ x_int('PESO') }}
+    {% else %} cast(null as {{ dbt.type_int() }}) {% endif %}           as birth_weight_g,
+
+    {% if 'gestacao' in colnames %}     {{ x_str('GESTACAO') }}
+    {% else %} cast(null as {{ dbt.type_string() }}) {% endif %}        as gestation_code,
+
+    {% if 'semagestac' in colnames %}   {{ x_int('SEMAGESTAC') }}
+    {% else %} cast(null as {{ dbt.type_int() }}) {% endif %}           as gestational_weeks,
+
+    {% if 'parto' in colnames %}        {{ x_str('PARTO') }}
+    {% else %} cast(null as {{ dbt.type_string() }}) {% endif %}        as delivery_type,
+
+    {% if 'codmunnasc' in colnames %}   {{ x_str('CODMUNNASC') }}
+    {% else %} cast(null as {{ dbt.type_string() }}) {% endif %}        as municipality_code
   from k
 )
 
