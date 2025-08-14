@@ -77,13 +77,11 @@ Com isso, o processo de ingestão foi comprovadamente executado na plataforma-al
 ## 2) Transformação e Modelagem de Dados com dbt
 
 ### Objetivo
-Transformar os dados brutos do DataSUS em um modelo dimensional no formato **Star Schema**, pronto para análise em saúde pública.  
-O processo foi feito integralmente com o **dbt**, através da organização e transformação em camadas, criação de tabelas de fato e de dimensão, implementação de testes de qualidade e documentação.
-
----
+Transformar os dados brutos do DataSUS em um modelo dimensional no formato Star Schema, pronto para análise em saúde pública.  
+O processo foi feito integralmente com o dbt, através da organização e transformação em camadas, criação de tabelas de fato e de dimensão, implementação de testes de qualidade e documentação.
 
 ### Modelagem Dimensional
-O modelo foi desenhado em **Star Schema**, com uma tabela fato central (`fato_nascimentos`) conectada a várias dimensões que permitem análises geográficas, temporais, demográficas e clínicas.
+O modelo foi desenhado em Star Schema, com uma tabela fato central (`fato_nascimentos`) conectada a várias dimensões que permitem análises geográficas, temporais, demográficas e clínicas.
 
 **Tabelas criadas:**
 
@@ -97,7 +95,7 @@ O modelo foi desenhado em **Star Schema**, com uma tabela fato central (`fato_na
 | `dim_recem_nascido`     | Dimensão  | Características do recém-nascido, como sexo, peso ao nascer, Apgar no 1º e 5º minuto, e presença de anomalias congênitas. |
 
 **Chaves:**
-- Cada dimensão possui **surrogate key** (chave substituta) gerada na carga.
+- Cada dimensão possui surrogate key (chave substituta).
 - A fato referencia essas chaves e inclui métricas numéricas e indicadores binários, como:
   - `peso_ao_nascer`
   - `idade_gestacional`
@@ -106,8 +104,6 @@ O modelo foi desenhado em **Star Schema**, com uma tabela fato central (`fato_na
   - `flag_prematuro`
   - `apgar1`
   - `apgar5`
-
----
 
 ### Estrutura em Camadas no dbt
 
@@ -123,7 +119,7 @@ O modelo foi desenhado em **Star Schema**, com uma tabela fato central (`fato_na
 
 2. **Intermediate (`models/intermediate/`)**
    - Enriquece e junta tabelas de staging.
-   - Ex.: int_births_enriched.sql une dados de nascimentos com códigos de localidade, atributos da mãe e informações do recém-nascido.
+   - Ex.: `int_births_enriched.sql` une dados de nascimentos com códigos de localidade, atributos da mãe e informações do recém-nascido.
    - **Materialização:** `view` ou `table` dependendo do caso.
 
    **Comando:**
@@ -142,10 +138,10 @@ O modelo foi desenhado em **Star Schema**, com uma tabela fato central (`fato_na
    ```
 
 ### Testes de Qualidade no dbt
-Foram definidos testes no `schema.yml` e SQL para garantir a integridade dos dados.
+Foram definidos testes e SQL para garantir a integridade dos dados.
 
 Tipos de testes aplicados:
-- **Uniqueness:** garante que IDs de dimensões são únicos.
+- **Unique:** garante que IDs de dimensões são únicos.
 - **Not Null:** campos críticos (datas, município, sexo).
 - **Accepted Values:** validação de códigos do DataSUS (ex.: sexo ∈ {1, 2}).
 - **Referential Integrity:** chaves estrangeiras da fato devem existir nas dimensões.
@@ -169,28 +165,22 @@ Foi gerada documentação dos modelos usando:
    dbt docs serve
    ```
 
-Isso permite consultar:
+**Isto permite consultar:**
 - Descrições das tabelas e colunas
 - Relações entre modelos
-- Histórico de execuções
-
-A documentação pode ser aberta no navegador, facilitando manutenção e entendimento por toda a equipa.
+- Histórico de execuções.
 
 ### Execução Completa
 Para rodar toda a pipeline de transformação e modelagem de dados:
-
-# Executa todos os modelos
+1. Executa todos os modelos
    ```bash
    dbt run
    ```
-
-
-# Executa todos os testes
+2. Executa todos os testes
    ```bash
    dbt test
    ```
-
-# Gera e abre documentação
+3. Gera e abre documentação
    ```bash
    dbt docs generate
    dbt docs serve
@@ -200,7 +190,7 @@ Para rodar toda a pipeline de transformação e modelagem de dados:
 
 A imagem abaixo apresenta o grafo de dependência dos modelos no dbt, evidenciando a sequência de transformações e relações entre tabelas.
 
-![Lineage Graph](dbt\health_insights\images\lineage_graph.png)
+![Lineage Graph](images/lineage_graph.png)
 
 
 ## 3) Escolha da Plataforma + Bónus

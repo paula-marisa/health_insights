@@ -60,7 +60,6 @@ models:
   columns:
   - name: sk_mae
     tests: [ not_null, unique ]
-  # idade_mae pode ser NULL por agora; quando tiveres o campo real, adiciona not_null
   - name: faixa_etaria_mae
     tests:
     - accepted_values:
